@@ -13,6 +13,8 @@ export const mockStudent: StudentProfile = {
   email: 'alex.morgan@lawschool.edu',
   fullName: 'Alex Morgan',
   role: 'student',
+  currentLevel: 3,
+  levelTitle: 'Practicing Advocate',
   status: 'active',
   institution: 'Commonwealth Law School',
   degreeProgram: 'Bachelor of Laws (LLB)',

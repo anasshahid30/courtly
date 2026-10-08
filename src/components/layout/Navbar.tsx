@@ -3,7 +3,11 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Scale, Mic, BookOpen, BarChart3, LayoutDashboard, Bell, Sparkles, Menu, X, User as UserIcon, LogOut, Settings, Award } from 'lucide-react';
+import {
+  Scale, Mic, BookOpen, BarChart3, LayoutDashboard, Bell,
+  Sparkles, Menu, X, User as UserIcon, LogOut, Settings,
+  Award, Shield, UserCheck, Flame
+} from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,9 +29,12 @@ export function Navbar() {
   const {
     currentUser,
     isAuthenticated,
+    isGuestMode,
+    currentLevel,
     openAuthModal,
     openOnboarding,
-    setAuthenticated
+    setAuthenticated,
+    loginAsGuest
   } = useAppStore();
 
   const [notifications, setNotifications] = useState(mockNotifications);
@@ -96,6 +103,14 @@ export function Navbar() {
         {/* Right Action Icons & Auth Controls */}
         <div className="flex items-center gap-3">
           
+          {/* Guest Mode Indicator Badge */}
+          {(!isAuthenticated || isGuestMode) && (
+            <Badge variant="outline" className="hidden lg:inline-flex text-[10px] text-muted-foreground border-border bg-muted/30 gap-1 py-1 px-2">
+              <UserCheck className="w-3 h-3 text-primary" />
+              <span>Guest Mode (Open Access)</span>
+            </Badge>
+          )}
+
           {/* Notifications Popover */}
           <Popover>
             <PopoverTrigger className="relative h-9 w-9 rounded-md inline-flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50">
@@ -136,7 +151,7 @@ export function Navbar() {
             </Button>
           </Link>
 
-          {/* User Profile or Sign In */}
+          {/* User Profile or Sign In Controls */}
           {isAuthenticated ? (
             <DropdownMenu>
               <DropdownMenuTrigger className="relative h-9 rounded-full flex items-center gap-2 pl-2 pr-3 hover:bg-muted border border-border/50">
@@ -145,20 +160,29 @@ export function Navbar() {
                     {currentUser.fullName.split(' ').map(n => n[0]).join('')}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-xs font-medium text-foreground hidden sm:inline-block max-w-[100px] truncate">
-                  {currentUser.fullName}
-                </span>
+                <div className="flex flex-col text-left hidden sm:flex">
+                  <span className="text-xs font-medium text-foreground max-w-[90px] truncate leading-tight">
+                    {currentUser.fullName}
+                  </span>
+                  <span className="text-[9px] text-primary font-semibold">
+                    Level {currentLevel || 3}
+                  </span>
+                </div>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 shadow-lg border-border">
+              <DropdownMenuContent align="end" className="w-60 shadow-lg border-border">
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-semibold leading-none">{currentUser.fullName}</p>
-                    <p className="text-xs leading-none text-muted-foreground">{currentUser.email}</p>
-                    <div className="flex items-center gap-1 mt-1.5">
-                      <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal capitalize">
-                        {currentUser.role}
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold leading-none">{currentUser.fullName}</p>
+                      <Badge className="bg-primary text-primary-foreground text-[9px] font-mono">
+                        Level {currentLevel || 3}
                       </Badge>
-                      <span className="text-[10px] text-muted-foreground">• {currentUser.institution}</span>
+                    </div>
+                    <p className="text-xs leading-none text-muted-foreground">{currentUser.email}</p>
+                    <div className="flex items-center gap-1 mt-1.5 text-[10px] text-muted-foreground">
+                      <span>{currentUser.institution || 'Law School'}</span>
+                      <span>•</span>
+                      <span>{currentUser.currentStreak || 5} Day Streak 🔥</span>
                     </div>
                   </div>
                 </DropdownMenuLabel>
@@ -166,7 +190,7 @@ export function Navbar() {
                 <DropdownMenuItem className="p-0">
                   <Link href="/dashboard" className="w-full px-2 py-1.5 cursor-pointer flex items-center gap-2 text-xs">
                     <LayoutDashboard className="w-4 h-4 text-muted-foreground" />
-                    <span>My Dashboard</span>
+                    <span>Advocate Dashboard</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem className="p-0">
@@ -181,21 +205,24 @@ export function Navbar() {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={() => setAuthenticated(false)}
-                  className="cursor-pointer text-destructive focus:text-destructive flex items-center gap-2 text-xs"
+                  onClick={() => {
+                    setAuthenticated(false);
+                    loginAsGuest();
+                  }}
+                  className="cursor-pointer text-muted-foreground hover:text-foreground flex items-center gap-2 text-xs"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span>Sign Out (Demo)</span>
+                  <span>Switch to Guest Mode</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={() => openAuthModal('login')}>
+              <Button variant="ghost" size="sm" onClick={() => openAuthModal('login')} className="text-xs">
                 Sign In
               </Button>
-              <Button size="sm" onClick={() => openAuthModal('register')}>
-                Get Started
+              <Button size="sm" onClick={() => openAuthModal('register')} className="text-xs font-semibold">
+                Create Account
               </Button>
             </div>
           )}
@@ -247,6 +274,11 @@ export function Navbar() {
                 <span>Launch Virtual Courtroom</span>
               </Button>
             </Link>
+            {!isAuthenticated && (
+              <Button variant="outline" onClick={() => { setMobileMenuOpen(false); openAuthModal('register'); }} className="w-full text-xs">
+                Create Free Student Account
+              </Button>
+            )}
           </div>
         </div>
       )}

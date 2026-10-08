@@ -5,19 +5,28 @@ import Link from 'next/link';
 import {
   Scale, Mic, BookOpen, BarChart3, Sparkles, Shield,
   ArrowRight, CheckCircle2, Play, Volume2, Landmark,
-  Users, Building2, FileText, ChevronRight, Gavel, Award
+  Users, Building2, FileText, ChevronRight, Gavel, Award,
+  HelpCircle, Mail, Globe2, Check, Lock, Star, Flame
 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { mockDomains, mockSimulations } from '@/data/mock-data';
+import { mockAdvocacyLevels, mockCertificates } from '@/data/learning-levels';
 import { AuthModal } from '@/components/auth/AuthModal';
 import { OnboardingModal } from '@/components/auth/OnboardingModal';
+import { TransferSessionModal } from '@/components/auth/TransferSessionModal';
 import { speechService } from '@/lib/audio';
+import { toast } from 'sonner';
 
 export default function HomePage() {
-  const { openAuthModal, openOnboarding, isAuthenticated, startCourtroomSession } = useAppStore();
+  const { openAuthModal, openOnboarding, isAuthenticated, startCourtroomSession, loginAsGuest } = useAppStore();
   const [isPlayingAudioTeaser, setIsPlayingAudioTeaser] = useState(false);
+  const [contactSubmitted, setContactSubmitted] = useState(false);
+  const [contactName, setContactName] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactMessage, setContactMessage] = useState('');
 
   const handlePlayVoiceTeaser = () => {
     if (isPlayingAudioTeaser) {
@@ -34,12 +43,17 @@ export default function HomePage() {
     }
   };
 
+  const handleContactSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setContactSubmitted(true);
+    toast.success('Thank you! Your inquiry has been transmitted to Courtly academic partnerships.');
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground selection:bg-primary/20">
       
       {/* ── 1. HERO SECTION ── */}
       <section className="relative overflow-hidden pt-12 pb-20 md:pt-20 md:pb-28 border-b border-border/40">
-        {/* Background Subtle Gradient Blobs */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-primary/10 blur-[120px] rounded-full pointer-events-none -z-10" />
         <div className="absolute top-1/3 right-10 w-[300px] h-[250px] bg-accent/10 blur-[100px] rounded-full pointer-events-none -z-10" />
 
@@ -47,9 +61,9 @@ export default function HomePage() {
           <div className="text-center max-w-3xl mx-auto space-y-6">
             
             {/* Pill Badge */}
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/30 bg-primary/5 text-primary text-xs font-semibold shadow-xs animate-fade-in">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-primary/30 bg-primary/5 text-primary text-xs font-semibold shadow-xs">
               <Sparkles className="w-3.5 h-3.5 text-accent" />
-              <span>Next-Gen Virtual Legal Practice Environment</span>
+              <span>Open Guest Access • 5-Level Advocacy System • Verified Rubrics</span>
             </div>
 
             {/* Main Headline */}
@@ -62,38 +76,45 @@ export default function HomePage() {
 
             {/* Subtitle */}
             <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto">
-              Step into an immersive, voice-powered virtual courtroom. Argue commercial disputes, cross-examine witnesses, handle judicial inquiries, and receive instant feedback grounded in Common Law jurisprudence.
+              Step into an immersive, voice-powered virtual courtroom. Cross-examine commercial witnesses, handle judicial interruptions under Common Law, and build certified advocacy competencies.
             </p>
 
-            {/* Hero CTA Buttons */}
+            {/* Primary & Secondary Call to Actions */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
               <Link href="/courtroom">
-                <Button size="lg" className="w-full sm:w-auto h-12 px-6 gap-2 text-sm font-semibold shadow-md bg-gradient-to-r from-primary to-primary/90 hover:opacity-95">
+                <Button
+                  size="lg"
+                  onClick={() => loginAsGuest()}
+                  className="w-full sm:w-auto h-12 px-7 gap-2 text-sm font-semibold shadow-md bg-gradient-to-r from-primary to-primary/90 hover:opacity-95"
+                >
                   <Mic className="w-4 h-4" />
-                  <span>Launch Virtual Courtroom</span>
+                  <span>Start Practicing — No Account Required</span>
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               </Link>
-              <Link href="/dashboard">
-                <Button size="lg" variant="outline" className="w-full sm:w-auto h-12 px-6 text-sm font-medium border-border hover:bg-muted/60">
-                  <span>Explore Case Library</span>
-                </Button>
-              </Link>
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={() => openAuthModal('register')}
+                className="w-full sm:w-auto h-12 px-6 text-sm font-medium border-border hover:bg-muted/60"
+              >
+                <span>Create Your Free Account</span>
+              </Button>
             </div>
 
-            {/* Trust & Academic Validation */}
-            <div className="pt-6 flex flex-wrap items-center justify-center gap-6 text-xs text-muted-foreground">
-              <div className="flex items-center gap-2">
+            {/* Trust & Open Access Highlights */}
+            <div className="pt-4 flex flex-wrap items-center justify-center gap-6 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                <span>Voice & Speech AI Synthesis</span>
+                <span>Instant Guest Access</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                <span>Grounded Common Law Precedents</span>
+                <span>5-Level Learning System</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                <span>Structured Judicial Rubrics</span>
+                <span>Future Certification Path</span>
               </div>
             </div>
           </div>
@@ -127,16 +148,16 @@ export default function HomePage() {
             <div className="p-6 md:p-8 grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
               <div className="md:col-span-2 space-y-4">
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-[10px] font-mono">Simulated Proceeding</Badge>
+                  <Badge variant="outline" className="text-[10px] font-mono">Open Guest Simulation</Badge>
                   <Badge variant="secondary" className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-                    Live Demo Ready
+                    No Sign Up Needed
                   </Badge>
                 </div>
                 <h3 className="font-serif text-xl font-bold text-foreground">
                   Henderson v. Caldwell Trading Ltd
                 </h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  A high-stakes breach of contract dispute involving an exclusive 3-year commercial distribution agreement. Practice opening arguments, handle judicial interruptions from Justice Vance, and tender the inspection release note into evidence.
+                  A high-stakes repudiatory breach of contract dispute under the <em>Sale of Goods Act 1979</em>. Practice opening arguments, cross-examine the supplier, raise objections against hearsay, and tender inspection notes into evidence.
                 </p>
 
                 <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1">
@@ -145,8 +166,8 @@ export default function HomePage() {
                     <span>Business & Contract Law</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5 text-primary" />
-                    <span>Plaintiff / Defendant Role</span>
+                    <Award className="w-3.5 h-3.5 text-primary" />
+                    <span>Level 3 Benchmark</span>
                   </div>
                 </div>
               </div>
@@ -162,7 +183,7 @@ export default function HomePage() {
                 <Link href="/courtroom" className="w-full">
                   <Button size="sm" className="w-full text-xs font-semibold gap-1.5">
                     <Play className="w-3 h-3 fill-current" />
-                    <span>Enter Proceeding</span>
+                    <span>Enter Guest Proceeding</span>
                   </Button>
                 </Link>
               </div>
@@ -171,54 +192,48 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── 2. LEGAL DOMAIN SHOWCASE ── */}
+      {/* ── 2. FIVE-LEVEL ADVOCACY LEARNING PATH ── */}
       <section className="py-16 md:py-24 border-b border-border/40 bg-muted/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-12 space-y-3">
-            <h2 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">
-              Comprehensive Legal Practice Domains
+          <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
+            <Badge variant="outline" className="text-xs text-primary font-semibold">Progressive Mastery</Badge>
+            <h2 className="font-serif text-3xl sm:text-4xl font-bold text-foreground">
+              Courtly’s 5-Level Learning System
             </h2>
             <p className="text-xs sm:text-sm text-muted-foreground">
-              Courtly supports rigorous simulations across core foundational and commercial legal disciplines.
+              Progress from courtroom etiquette to complex multi-party trials. Advancement reflects verified clinical competencies, not arbitrary timer counts.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {mockDomains.map((dom) => (
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            {mockAdvocacyLevels.map((lvl) => (
               <div
-                key={dom.id}
-                className={`p-4 rounded-xl border transition-all flex flex-col justify-between ${
-                  dom.availability === 'available'
-                    ? 'border-border/80 bg-card hover:border-primary/50 hover:shadow-md cursor-pointer'
-                    : 'border-border/40 bg-muted/20 opacity-70'
-                }`}
+                key={lvl.levelNumber}
+                className="p-4 rounded-2xl border border-border bg-card flex flex-col justify-between space-y-4 hover:border-primary/50 transition-all"
               >
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
-                      <Scale className="w-4 h-4" />
-                    </div>
-                    <Badge
-                      variant={dom.availability === 'available' ? 'default' : 'outline'}
-                      className="text-[9px] capitalize"
-                    >
-                      {dom.availability === 'available' ? 'Available' : dom.availability === 'coming_soon' ? 'Coming Soon' : 'In Dev'}
+                    <span className="text-xs font-mono font-bold text-primary">LEVEL 0{lvl.levelNumber}</span>
+                    <Badge variant={lvl.isCompleted ? 'default' : lvl.isUnlocked ? 'secondary' : 'outline'} className="text-[9px]">
+                      {lvl.isCompleted ? 'Mastered' : lvl.isUnlocked ? 'Current' : 'Locked'}
                     </Badge>
                   </div>
-                  <h4 className="font-semibold text-sm text-foreground">{dom.name}</h4>
-                  <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
-                    {dom.description}
+                  <h4 className="font-serif font-bold text-sm text-foreground">{lvl.title}</h4>
+                  <p className="text-[11px] text-muted-foreground line-clamp-3 leading-relaxed">
+                    {lvl.description}
                   </p>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between text-[10px] text-muted-foreground">
-                  <span>{dom.simulationCount} Simulations</span>
-                  {dom.availability === 'available' && (
-                    <Link href="/dashboard" className="text-primary font-medium hover:underline flex items-center gap-0.5">
-                      <span>Browse</span>
-                      <ChevronRight className="w-3 h-3" />
-                    </Link>
-                  )}
+                <div className="space-y-2 pt-2 border-t border-border/60 text-[10px]">
+                  <div className="text-muted-foreground font-medium">Core Skills:</div>
+                  <ul className="space-y-1 text-muted-foreground">
+                    {lvl.requiredSkills.slice(0, 2).map((skill, i) => (
+                      <li key={i} className="flex items-start gap-1.5">
+                        <span className="text-primary font-bold">•</span>
+                        <span className="line-clamp-1">{skill}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               </div>
             ))}
@@ -226,239 +241,205 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── 3. FLAGSHIP VIRTUAL COURTROOM FEATURES ── */}
-      <section className="py-16 md:py-24 border-b border-border/40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
-            <Badge variant="outline" className="text-xs text-primary font-semibold">Flagship Experience</Badge>
-            <h2 className="font-serif text-3xl sm:text-4xl font-bold text-foreground">
-              Designed for Realistic Courtroom Advocacy
-            </h2>
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              Unlike generic chatbots, Courtly models the exact procedural flow, evidentiary rules, and verbal cadence of a real court.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Feature 1 */}
-            <div className="p-6 rounded-2xl border border-border bg-card/60 space-y-4 hover:border-primary/40 transition-all">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                <Mic className="w-6 h-6" />
-              </div>
-              <h3 className="font-serif text-lg font-bold text-foreground">Voice-First Interaction</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Speak directly into your microphone. Courtly analyzes oral delivery, pacing, and clarity while AI participants respond naturally through voice synthesis.
-              </p>
-              <div className="text-[11px] text-primary font-medium flex items-center gap-1 pt-1">
-                <span>Text fallback mode always available</span>
-              </div>
-            </div>
-
-            {/* Feature 2 */}
-            <div className="p-6 rounded-2xl border border-border bg-card/60 space-y-4 hover:border-primary/40 transition-all">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                <Gavel className="w-6 h-6" />
-              </div>
-              <h3 className="font-serif text-lg font-bold text-foreground">Active Judicial Bench & Objections</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                The Judge intervenes with probing questions on statutory interpretation. Raise evidentiary objections (Hearsay, Leading, Relevance) and receive reasoned legal rulings.
-              </p>
-              <div className="text-[11px] text-primary font-medium flex items-center gap-1 pt-1">
-                <span>Civil Evidence Act & CPR aligned</span>
-              </div>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="p-6 rounded-2xl border border-border bg-card/60 space-y-4 hover:border-primary/40 transition-all">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                <BarChart3 className="w-6 h-6" />
-              </div>
-              <h3 className="font-serif text-lg font-bold text-foreground">Judicial Scorecard & Replay</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                After each hearing, review a complete rubric evaluation covering legal reasoning, witness handling, and procedural compliance with key moment bookmarks.
-              </p>
-              <div className="text-[11px] text-primary font-medium flex items-center gap-1 pt-1">
-                <span>5-competency radar analysis</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── 4. HOW IT WORKS (PEDAGOGICAL LOOP) ── */}
-      <section className="py-16 md:py-24 border-b border-border/40 bg-muted/15">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
-            <h2 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">
-              The 4-Step Advocacy Learning Loop
-            </h2>
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              From case briefing to post-hearing judicial debrief, master clinical trial advocacy through structured repetition.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              {
-                step: '01',
-                title: 'Review Case Dossier',
-                desc: 'Analyze pleadings, witness statements, disputed facts, and statutory precedents in the Legal Workspace.',
-                icon: FileText
-              },
-              {
-                step: '02',
-                title: 'Enter Simulated Court',
-                desc: 'Argue your case aloud or via text against realistic opposing counsel and a watchful judicial bench.',
-                icon: Mic
-              },
-              {
-                step: '03',
-                title: 'Tender Exhibits & Object',
-                desc: 'Introduce contracts, challenge improper questioning, and adapt to live judicial interruptions.',
-                icon: Gavel
-              },
-              {
-                step: '04',
-                title: 'Judicial Assessment',
-                desc: 'Receive detailed competency scoring, scrub the timestamped replay, and track longitudinal progress.',
-                icon: Award
-              }
-            ].map((item) => {
-              const Icon = item.icon;
-              return (
-                <div key={item.step} className="p-5 rounded-xl border border-border bg-card space-y-3 relative">
-                  <div className="text-2xl font-mono font-black text-primary/30">{item.step}</div>
-                  <div className="flex items-center gap-2">
-                    <Icon className="w-4 h-4 text-primary" />
-                    <h4 className="font-semibold text-sm text-foreground">{item.title}</h4>
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ── 5. FOR LAW SCHOOLS & INSTITUTIONS ── */}
+      {/* ── 3. FUTURE CERTIFICATION ROADMAP ── */}
       <section className="py-16 md:py-24 border-b border-border/40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-6">
               <Badge variant="outline" className="text-xs font-semibold text-primary">
-                For Legal Educators & Universities
+                Verifiable Competency Roadmap
               </Badge>
               <h2 className="font-serif text-3xl sm:text-4xl font-bold text-foreground leading-tight">
-                Scale clinical legal education across cohorts without scaling faculty workload.
+                Earn structured advocacy credentials backed by standardized judicial rubrics.
               </h2>
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                Law schools use Courtly to assign moot court exercises, standardize clinical assessment rubrics, and provide students unlimited practice hours before live courtroom clinics.
+                Courtly bridges legal academia and professional advocacy. Once you master Level milestones and pass proctored clinical evaluations, qualify for verifiable certificates grounded in Common Law trial practice.
               </p>
 
               <div className="space-y-3 pt-2">
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                   <div className="text-xs">
-                    <strong className="text-foreground">Custom Cohort Assignments:</strong> Set specific case files, roles, and difficulty levels for entire law classes.
+                    <strong className="text-foreground">Level Completion Milestones:</strong> Complete required evidentiary tenders, sustained objections, and witness examinations.
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                   <div className="text-xs">
-                    <strong className="text-foreground">Standardized Rubrics:</strong> Assess legal reasoning, evidentiary compliance, and courtroom etiquette automatically.
+                    <strong className="text-foreground">Proctored Clinical Exit Evaluation:</strong> Pass standardized multi-issue hearings evaluated by calibrated judicial rubrics.
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                   <div className="text-xs">
-                    <strong className="text-foreground">RAG Document Ingestion:</strong> Upload institutional moot problem sets and custom statutory materials securely.
+                    <strong className="text-foreground">Unique Verification ID:</strong> Tamper-evident credential identifiers shareable with law firms and university admissions.
                   </div>
                 </div>
               </div>
 
-              <div className="pt-4">
-                <Link href="/dashboard">
-                  <Button variant="outline" className="gap-2 text-xs font-semibold">
-                    <Building2 className="w-4 h-4" />
-                    <span>View Educator Portal Demo</span>
-                  </Button>
-                </Link>
+              <div className="pt-2 flex items-center gap-3">
+                <Button onClick={() => openAuthModal('register')} className="text-xs font-semibold gap-1.5">
+                  <Award className="w-3.5 h-3.5" />
+                  <span>Start Learning Journey</span>
+                </Button>
               </div>
             </div>
 
-            <div className="p-6 rounded-2xl border border-border bg-card/80 shadow-xl space-y-4">
+            {/* Certificate Preview Card */}
+            <div className="p-6 rounded-2xl border border-primary/30 bg-gradient-to-br from-card via-card to-primary/5 shadow-xl space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-border">
                 <div className="flex items-center gap-2">
-                  <Award className="w-4 h-4 text-primary" />
-                  <span className="font-semibold text-xs text-foreground">Cohort Performance Overview</span>
+                  <Award className="w-5 h-5 text-primary" />
+                  <span className="font-serif font-bold text-sm text-foreground">Courtly Certificate of Advocacy</span>
                 </div>
-                <Badge variant="secondary" className="text-[10px]">LLB Cohort 2025/26</Badge>
+                <Badge variant="outline" className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400">
+                  Verified Sample
+                </Badge>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 text-center">
-                <div className="p-3 rounded-lg bg-muted/40 border border-border/60">
-                  <div className="text-xl font-bold text-foreground">48</div>
-                  <div className="text-[10px] text-muted-foreground">Active Advocates</div>
-                </div>
-                <div className="p-3 rounded-lg bg-muted/40 border border-border/60">
-                  <div className="text-xl font-bold text-primary">79.4%</div>
-                  <div className="text-[10px] text-muted-foreground">Avg. Score</div>
-                </div>
-                <div className="p-3 rounded-lg bg-muted/40 border border-border/60">
-                  <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400">184 hrs</div>
-                  <div className="text-[10px] text-muted-foreground">Sim Practice</div>
+              <div className="space-y-1 text-center py-4">
+                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Awarded to</div>
+                <div className="text-lg font-serif font-bold text-foreground">Alex Morgan</div>
+                <div className="text-xs text-primary font-semibold">Level 2 — Developing Advocate (Mastery)</div>
+                <div className="text-[11px] text-muted-foreground pt-1">
+                  Jurisdiction: England & Wales • Issue ID: CRT-2025-EW-01402
                 </div>
               </div>
 
-              <div className="p-3 rounded-lg border border-border bg-muted/20 text-xs space-y-2">
-                <div className="flex justify-between text-[11px]">
-                  <span className="font-medium text-foreground">Contract Law Assignment #3 Completion</span>
-                  <span className="text-muted-foreground">92%</span>
-                </div>
-                <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full bg-primary rounded-full w-[92%]" />
-                </div>
+              <div className="p-3 rounded-lg bg-muted/40 border border-border text-[11px] text-muted-foreground leading-relaxed">
+                Demonstrated superior competence in opening statements, statutory grounding under the Sale of Goods Act 1979, and formal exhibit tendering.
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── 6. FINAL CALL TO ACTION ── */}
-      <section className="py-20 bg-gradient-to-b from-background to-primary/5 text-center">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-          <div className="w-12 h-12 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center mx-auto shadow-lg shadow-primary/20">
-            <Scale className="w-6 h-6" />
+      {/* ── 4. FREQUENTLY ASKED QUESTIONS (FAQ) ── */}
+      <section className="py-16 md:py-24 border-b border-border/40 bg-muted/10">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+          <div className="text-center space-y-3">
+            <h2 className="font-serif text-3xl font-bold text-foreground">Frequently Asked Questions</h2>
+            <p className="text-xs sm:text-sm text-muted-foreground">Everything you need to know about practicing on Courtly.</p>
           </div>
-          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-foreground">
-            Step into the Virtual Courtroom Today.
-          </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground max-w-xl mx-auto leading-relaxed">
-            Gain the oral confidence, procedural mastery, and evidentiary instincts that textbooks alone cannot teach.
-          </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-            <Link href="/courtroom">
-              <Button size="lg" className="w-full sm:w-auto h-11 px-6 text-xs font-semibold gap-2">
-                <Mic className="w-3.5 h-3.5" />
-                <span>Begin Free Practice Session</span>
-              </Button>
-            </Link>
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={() => openAuthModal('register')}
-              className="w-full sm:w-auto h-11 px-6 text-xs font-medium"
-            >
-              <span>Create Student Account</span>
-            </Button>
+          <Accordion className="w-full space-y-3">
+            <AccordionItem value="faq-1" className="border rounded-xl px-4 bg-card">
+              <AccordionTrigger className="text-xs font-semibold text-foreground hover:no-underline">
+                Can I practice without creating an account?
+              </AccordionTrigger>
+              <AccordionContent className="text-xs text-muted-foreground leading-relaxed">
+                Yes! Anyone can immediately enter the Virtual Courtroom, participate in available simulations, examine witnesses, tender exhibits, and view instant performance scores in Guest Mode. Registration is only required when you want to save your history and track 5-level milestones across devices.
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="faq-2" className="border rounded-xl px-4 bg-card">
+              <AccordionTrigger className="text-xs font-semibold text-foreground hover:no-underline">
+                Which legal jurisdictions and statutes are supported?
+              </AccordionTrigger>
+              <AccordionContent className="text-xs text-muted-foreground leading-relaxed">
+                Courtly is currently calibrated to Common Law jurisprudence, specifically <strong>England & Wales</strong> (Civil Procedure Rules, Sale of Goods Act 1979, Civil Evidence Act 1995). Federal US (FRCP/FRE) and Indian common law procedural models are under active development.
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="faq-3" className="border rounded-xl px-4 bg-card">
+              <AccordionTrigger className="text-xs font-semibold text-foreground hover:no-underline">
+                How does the voice AI interaction work?
+              </AccordionTrigger>
+              <AccordionContent className="text-xs text-muted-foreground leading-relaxed">
+                Courtly uses natural browser speech synthesis and voice activity recognition. The AI Judge and opposing counsel speak their dialogue aloud and interrupt with questions on statutory interpretation. You can speak directly into your microphone or toggle Text Response Mode at any time.
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="faq-4" className="border rounded-xl px-4 bg-card">
+              <AccordionTrigger className="text-xs font-semibold text-foreground hover:no-underline">
+                How are the 5 advocacy levels evaluated?
+              </AccordionTrigger>
+              <AccordionContent className="text-xs text-muted-foreground leading-relaxed">
+                Advancement requires demonstrating specific clinical skills: sustaining evidentiary objections, cross-examining without leading, citing correct statutory provisions, and achieving passing scores on complex multi-issue hearings.
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="faq-5" className="border rounded-xl px-4 bg-card">
+              <AccordionTrigger className="text-xs font-semibold text-foreground hover:no-underline">
+                Can law schools and universities assign cohort moots?
+              </AccordionTrigger>
+              <AccordionContent className="text-xs text-muted-foreground leading-relaxed">
+                Yes. Through the Educator Portal, law faculty can assign specific cases, configure customized judicial rubrics, and monitor cohort skill completion statistics without increasing faculty workload.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
+      </section>
+
+      {/* ── 5. CONTACT US & ABOUT COURTLY ── */}
+      <section className="py-16 md:py-24">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="p-8 rounded-2xl border border-border bg-card shadow-lg space-y-6">
+            <div className="text-center space-y-2">
+              <h3 className="font-serif text-2xl font-bold text-foreground">Get in Touch with Academic Partnerships</h3>
+              <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                Interested in bringing Courtly to your law school, moot court society, or clinical practice program? Send us an inquiry.
+              </p>
+            </div>
+
+            {contactSubmitted ? (
+              <div className="p-6 rounded-xl bg-primary/5 border border-primary/20 text-center space-y-2">
+                <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
+                <div className="font-semibold text-sm text-foreground">Inquiry Received</div>
+                <p className="text-xs text-muted-foreground">Our academic team will respond within 24 hours.</p>
+              </div>
+            ) : (
+              <form onSubmit={handleContactSubmit} className="space-y-4 max-w-lg mx-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-foreground">Your Name</label>
+                    <input
+                      type="text"
+                      value={contactName}
+                      onChange={(e) => setContactName(e.target.value)}
+                      placeholder="e.g. Prof. Eleanor Davies"
+                      className="w-full h-9 rounded-md border border-border bg-background px-3 text-xs text-foreground focus:ring-1 focus:ring-primary"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-foreground">Institution Email</label>
+                    <input
+                      type="email"
+                      value={contactEmail}
+                      onChange={(e) => setContactEmail(e.target.value)}
+                      placeholder="name@university.edu"
+                      className="w-full h-9 rounded-md border border-border bg-background px-3 text-xs text-foreground focus:ring-1 focus:ring-primary"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">Message / Clinical Requirements</label>
+                  <textarea
+                    value={contactMessage}
+                    onChange={(e) => setContactMessage(e.target.value)}
+                    placeholder="Tell us about your cohort size or clinical curriculum..."
+                    className="w-full h-20 rounded-md border border-border bg-background p-3 text-xs text-foreground resize-none focus:ring-1 focus:ring-primary"
+                    required
+                  />
+                </div>
+
+                <Button type="submit" className="w-full h-9 text-xs font-semibold gap-1.5">
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>Send Institutional Inquiry</span>
+                </Button>
+              </form>
+            )}
           </div>
         </div>
       </section>
 
-      {/* Modals */}
+      {/* Global Modals */}
       <AuthModal />
       <OnboardingModal />
+      <TransferSessionModal />
     </div>
   );
 }

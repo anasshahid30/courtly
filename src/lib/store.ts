@@ -6,17 +6,40 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type {
   StudentProfile, Simulation, SimulationSession, TranscriptEntry,
-  EvidenceItem, JudicialRuling, CaseFile
+  EvidenceItem, JudicialRuling, CaseFile, PerformanceReport,
+  AdvocacyLevel, Achievement, CertificateRecord
 } from '@/types';
-import { mockStudent, mockSimulations, mockCaseFiles } from '@/data/mock-data';
+import { mockStudent, mockSimulations, mockCaseFiles, mockPerformanceReport } from '@/data/mock-data';
+import { mockAdvocacyLevels, mockAchievements, mockCertificates } from '@/data/learning-levels';
 
 interface AppState {
-  // User & Auth
+  // User & Auth State
   currentUser: StudentProfile;
   isAuthenticated: boolean;
+  isGuestMode: boolean;
+  
+  // Guest Session & Transfer State
+  guestSession: SimulationSession | null;
+  guestPerformance: PerformanceReport | null;
+  isTransferModalOpen: boolean;
+  openTransferModal: () => void;
+  closeTransferModal: () => void;
+
   setCurrentUser: (user: StudentProfile) => void;
   setAuthenticated: (status: boolean) => void;
+  setGuestMode: (isGuest: boolean) => void;
   updateUserPreferences: (prefs: Partial<StudentProfile>) => void;
+  loginAsGuest: () => void;
+  loginAsStudent: (studentData?: Partial<StudentProfile>) => void;
+  transferGuestDataToAccount: () => void;
+
+  // 5-Level Progression & Certifications
+  currentLevel: number;
+  levelProgressPercentage: number;
+  levels: AdvocacyLevel[];
+  achievements: Achievement[];
+  certificates: CertificateRecord[];
+  updateMilestoneStatus: (levelNum: number, milestoneId: string, completed: boolean) => void;
 
   // Modals & Sheets
   isAuthModalOpen: boolean;
@@ -89,10 +112,74 @@ export const useAppStore = create<AppState>()(
       // User & Auth defaults
       currentUser: mockStudent,
       isAuthenticated: true,
-      setCurrentUser: (user) => set({ currentUser: user }),
-      setAuthenticated: (status) => set({ isAuthenticated: status }),
+      isGuestMode: false,
+      
+      // Guest Temporary Session
+      guestSession: null,
+      guestPerformance: null,
+      isTransferModalOpen: false,
+      openTransferModal: () => set({ isTransferModalOpen: true }),
+      closeTransferModal: () => set({ isTransferModalOpen: false }),
+
+      setCurrentUser: (user) => set({ currentUser: user, isAuthenticated: true, isGuestMode: false }),
+      setAuthenticated: (status) => set({ isAuthenticated: status, isGuestMode: !status }),
+      setGuestMode: (isGuest) => set({ isGuestMode: isGuest, isAuthenticated: !isGuest }),
+      
+      loginAsGuest: () => {
+        set({
+          isGuestMode: true,
+          isAuthenticated: false,
+        });
+      },
+
+      loginAsStudent: (studentData) => {
+        set((state) => ({
+          currentUser: { ...state.currentUser, ...(studentData || {}) },
+          isAuthenticated: true,
+          isGuestMode: false,
+        }));
+      },
+
+      transferGuestDataToAccount: () => {
+        const { guestPerformance, currentUser } = get();
+        if (guestPerformance) {
+          // Merge guest session to account
+          set((state) => ({
+            currentUser: {
+              ...state.currentUser,
+              completedSimulations: state.currentUser.completedSimulations + 1,
+            },
+            guestSession: null,
+            guestPerformance: null,
+            isTransferModalOpen: false,
+          }));
+        }
+      },
+
       updateUserPreferences: (prefs) =>
         set((state) => ({ currentUser: { ...state.currentUser, ...prefs } })),
+
+      // 5-Level Progression Defaults
+      currentLevel: 3,
+      levelProgressPercentage: 68,
+      levels: mockAdvocacyLevels,
+      achievements: mockAchievements,
+      certificates: mockCertificates,
+
+      updateMilestoneStatus: (levelNum, milestoneId, completed) => {
+        set((state) => ({
+          levels: state.levels.map((lvl) =>
+            lvl.levelNumber === levelNum
+              ? {
+                  ...lvl,
+                  milestones: lvl.milestones.map((m) =>
+                    m.id === milestoneId ? { ...m, isCompleted: completed } : m
+                  ),
+                }
+              : lvl
+          ),
+        }));
+      },
 
       // Modals
       isAuthModalOpen: false,
@@ -166,7 +253,7 @@ export const useAppStore = create<AppState>()(
               speakerName: 'The Hon. Justice Robert Vance',
               speakerRole: 'Presiding Judge',
               text: 'The High Court of Justice, Commercial Court is now in session. In the matter of Henderson v Caldwell Trading Ltd (Claim No. CL-2025-000842). Are counsel for the parties ready to proceed?',
-              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+              timestamp: '10:00:00',
               isKeyMoment: true,
             },
           ],
@@ -206,6 +293,9 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         currentUser: state.currentUser,
         isAuthenticated: state.isAuthenticated,
+        isGuestMode: state.isGuestMode,
+        currentLevel: state.currentLevel,
+        levelProgressPercentage: state.levelProgressPercentage,
         selectedRole: state.selectedRole,
         selectedDifficulty: state.selectedDifficulty,
         isVoiceMode: state.isVoiceMode,

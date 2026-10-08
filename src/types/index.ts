@@ -1,8 +1,8 @@
 // ============================================================
-// COURTLY — Comprehensive Type Definitions
+// COURTLY — Comprehensive Type Definitions & 5-Level Progression
 // ============================================================
 
-export type UserRole = 'student' | 'educator' | 'content_reviewer' | 'administrator';
+export type UserRole = 'guest' | 'student' | 'educator' | 'content_reviewer' | 'administrator';
 export type AccountStatus = 'active' | 'suspended' | 'pending_verification' | 'deactivated';
 export type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -24,7 +24,68 @@ export type SubscriptionTier = 'free' | 'student' | 'institution';
 export type NotificationType = 'simulation' | 'assignment' | 'performance' | 'account' | 'system';
 export type EvidenceAdmissibility = 'admitted' | 'objected' | 'excluded' | 'pending';
 
-// --- Core Models ---
+// --- 5-Level Progression & Certification Types ---
+
+export type CertificateStatus =
+  | 'not_eligible'
+  | 'requirements_in_progress'
+  | 'eligible_for_assessment'
+  | 'assessment_pending'
+  | 'passed'
+  | 'issued';
+
+export interface LevelMilestone {
+  id: string;
+  title: string;
+  description: string;
+  category: 'etiquette' | 'procedure' | 'evidence' | 'advocacy' | 'reasoning' | 'assessment';
+  isCompleted: boolean;
+  requiredSkillScore?: number;
+}
+
+export interface AdvocacyLevel {
+  levelNumber: number; // 1 to 5
+  title: string;
+  subtitle: string;
+  description: string;
+  badge: string;
+  minPassingScore: number;
+  totalRequiredSimulations: number;
+  learningObjectives: string[];
+  requiredSkills: string[];
+  milestones: LevelMilestone[];
+  assessmentRequirement: string;
+  isUnlocked: boolean;
+  isCompleted: boolean;
+  progressPercentage: number;
+}
+
+export interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  iconName: string;
+  category: 'advocacy' | 'milestone' | 'streak' | 'procedural' | 'evidence' | 'special';
+  unlockedAt?: string;
+  isUnlocked: boolean;
+  progress?: { current: number; total: number };
+}
+
+export interface CertificateRecord {
+  id: string;
+  title: string;
+  levelNumber: number;
+  jurisdiction: string;
+  legalDomain: string;
+  status: CertificateStatus;
+  issueDate?: string;
+  expiryDate?: string;
+  verificationId?: string;
+  assessmentScore?: number;
+  accreditationNote: string;
+}
+
+// --- Core User & Profiles ---
 
 export interface User {
   id: string;
@@ -39,7 +100,9 @@ export interface User {
 }
 
 export interface StudentProfile extends User {
-  role: 'student';
+  role: 'student' | 'educator';
+  currentLevel: number; // 1 to 5
+  levelTitle: string;
   degreeProgram?: string;
   studyLevel?: string;
   preferredJurisdiction?: string;
@@ -51,6 +114,8 @@ export interface StudentProfile extends User {
   totalPracticeHours: number;
   averageScore: number;
   currentStreak: number;
+  achievements?: Achievement[];
+  certificates?: CertificateRecord[];
 }
 
 export interface EducatorProfile extends User {
@@ -104,12 +169,14 @@ export interface Simulation {
   legalDomain: LegalDomain;
   jurisdiction: Jurisdiction;
   difficulty: DifficultyLevel;
+  targetLevel?: number;
   estimatedDuration: number;
   availableRoles: string[];
   learningObjectives: string[];
   proceedingType: string;
   status: SimulationStatus;
   isFeatured?: boolean;
+  isGuestEligible?: boolean;
   tags: string[];
   createdAt: string;
   updatedAt: string;
@@ -120,6 +187,7 @@ export interface SimulationSession {
   simulationId: string;
   simulation?: Simulation;
   userId: string;
+  isGuestSession?: boolean;
   userRole: string;
   difficulty: string;
   status: SessionStatus;
@@ -372,6 +440,8 @@ export interface PerformanceReport {
   overallScore: number;
   durationMinutes?: number;
   judicialFeedback?: string;
+  isGuestReport?: boolean;
+  provisionalLevelRecommendation?: string;
   skills?: SkillScore[];
   skillScores?: SkillScore[];
   strengths: string[];
