@@ -2,15 +2,23 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
-  Scale, Mic, BookOpen, BarChart3, LayoutDashboard, Bell,
-  Sparkles, Menu, X, User as UserIcon, LogOut, Settings,
-  Award, Shield, UserCheck, Flame
+  UserRound,
+  Menu,
+  X,
+  LogOut,
+  LayoutDashboard,
+  Mic,
+  BookOpen,
+  BarChart3,
+  ShieldCheck,
+  UserPlus,
+  LogIn,
+  Layers,
 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,263 +28,274 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { mockNotifications } from '@/data/mock-data';
 
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const {
     currentUser,
     isAuthenticated,
     isGuestMode,
-    currentLevel,
     openAuthModal,
-    openOnboarding,
     setAuthenticated,
-    loginAsGuest
+    loginAsGuest,
   } = useAppStore();
 
-  const [notifications, setNotifications] = useState(mockNotifications);
-  const unreadCount = notifications.filter(n => !n.isRead).length;
-
-  const markAllRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+  const handleTryCourtly = () => {
+    loginAsGuest();
+    router.push('/dashboard');
+    setMobileMenuOpen(false);
   };
 
-  const navLinks = [
-    { name: 'Home', href: '/', icon: Scale },
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Virtual Courtroom', href: '/courtroom', icon: Mic, badge: 'Flagship' },
-    { name: 'Legal Workspace', href: '/workspace', icon: BookOpen },
-    { name: 'Performance', href: '/performance', icon: BarChart3 },
-  ];
+  const handleOpenAuth = (mode: 'login' | 'register' | 'admin') => {
+    openAuthModal(mode);
+    setMobileMenuOpen(false);
+  };
+
+  const handleSignOut = () => {
+    setAuthenticated(false);
+    loginAsGuest();
+    router.push('/');
+  };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/85 backdrop-blur-md transition-all">
+    <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/90 backdrop-blur-md transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         
-        {/* Brand Logo */}
-        <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary via-primary/90 to-accent flex items-center justify-center shadow-md shadow-primary/20 group-hover:scale-105 transition-transform">
-              <Scale className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1.5">
-                <span className="font-serif text-2xl font-bold tracking-tight text-foreground">courtly<span className="text-primary font-sans font-black">.</span></span>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 hidden sm:inline-block">
-                  AI Practice
-                </span>
+        {/* ── Left: Logo & Wordmark ── */}
+        <div className="flex items-center gap-8">
+          <Link href="/" className="flex items-center gap-2.5 group">
+            {/* Geometric Architectural Logo Mark */}
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground shadow-xs group-hover:bg-primary/90 transition-colors">
+              <div className="w-4 h-4 border-2 border-primary-foreground/90 rounded-xs flex items-center justify-center">
+                <div className="w-1.5 h-1.5 bg-primary-foreground/90 rounded-xs" />
               </div>
+            </div>
+            <div className="flex items-baseline">
+              <span className="font-serif text-2xl font-bold tracking-tight text-foreground">
+                courtly<span className="text-primary font-sans font-black">.</span>
+              </span>
             </div>
           </Link>
 
-          {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => {
-              const Icon = link.icon;
-              const isActive = pathname === link.href;
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-md text-sm font-medium transition-all ${
-                    isActive
-                      ? 'bg-primary/10 text-primary font-semibold shadow-xs'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                  }`}
-                >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
-                  <span>{link.name}</span>
-                  {link.badge && (
-                    <span className="text-[10px] font-semibold bg-accent/20 text-accent-foreground px-1.5 py-0.2 rounded border border-accent/30 animate-pulse">
-                      {link.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
+          {/* ── Minimal Public Navigation ── */}
+          <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+            <Link
+              href="/"
+              className={`transition-colors hover:text-foreground ${
+                pathname === '/' ? 'text-foreground font-semibold' : 'text-muted-foreground'
+              }`}
+            >
+              Home
+            </Link>
+            <Link
+              href="/#about"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              About Us
+            </Link>
+            <Link
+              href="/#contact"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Contact Us
+            </Link>
           </nav>
         </div>
 
-        {/* Right Action Icons & Auth Controls */}
+        {/* ── Right Side Controls ── */}
         <div className="flex items-center gap-3">
           
-          {/* Guest Mode Indicator Badge */}
-          {(!isAuthenticated || isGuestMode) && (
-            <Badge variant="outline" className="hidden lg:inline-flex text-[10px] text-muted-foreground border-border bg-muted/30 gap-1 py-1 px-2">
-              <UserCheck className="w-3 h-3 text-primary" />
-              <span>Guest Mode (Open Access)</span>
-            </Badge>
-          )}
+          {/* Primary Action: Try Courtly */}
+          <Button
+            size="sm"
+            onClick={handleTryCourtly}
+            className="hidden sm:inline-flex shadow-xs bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-semibold px-4"
+          >
+            Try Courtly
+          </Button>
 
-          {/* Notifications Popover */}
-          <Popover>
-            <PopoverTrigger className="relative h-9 w-9 rounded-md inline-flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50">
-              <Bell className="w-4 h-4" />
-              {unreadCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full ring-2 ring-background animate-pulse" />
-              )}
-              <span className="sr-only">Notifications</span>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-0 shadow-lg border-border" align="end">
-              <div className="p-3 border-b border-border flex items-center justify-between bg-muted/30">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Notifications</span>
-                {unreadCount > 0 && (
-                  <button onClick={markAllRead} className="text-xs text-primary hover:underline">
-                    Mark all read
-                  </button>
-                )}
-              </div>
-              <div className="max-h-72 overflow-y-auto divide-y divide-border">
-                {notifications.map((n) => (
-                  <div key={n.id} className={`p-3 text-xs transition-colors hover:bg-muted/50 ${!n.isRead ? 'bg-primary/5' : ''}`}>
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <span className="font-semibold text-foreground">{n.title}</span>
-                      <span className="text-[10px] text-muted-foreground">{n.timestamp}</span>
-                    </div>
-                    <p className="text-muted-foreground line-clamp-2">{n.message}</p>
-                  </div>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          {/* Quick Launch CTA Button */}
-          <Link href="/courtroom" className="hidden lg:inline-flex">
-            <Button size="sm" className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-xs">
-              <Mic className="w-3.5 h-3.5" />
-              <span>Enter Courtroom</span>
-            </Button>
-          </Link>
-
-          {/* User Profile or Sign In Controls */}
-          {isAuthenticated ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger className="relative h-9 rounded-full flex items-center gap-2 pl-2 pr-3 hover:bg-muted border border-border/50">
-                <Avatar className="h-7 w-7 border border-border">
-                  <AvatarFallback className="bg-primary/15 text-primary text-xs font-bold">
-                    {currentUser.fullName.split(' ').map(n => n[0]).join('')}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col text-left hidden sm:flex">
-                  <span className="text-xs font-medium text-foreground max-w-[90px] truncate leading-tight">
-                    {currentUser.fullName}
-                  </span>
-                  <span className="text-[9px] text-primary font-semibold">
-                    Level {currentLevel || 3}
+          {/* Account Menu Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className="inline-flex items-center justify-center rounded-lg border border-border/70 p-2 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20"
+              aria-label="Account Menu"
+            >
+              {isAuthenticated && currentUser ? (
+                <div className="flex items-center gap-2">
+                  <Avatar className="w-6 h-6 border border-primary/20">
+                    <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-semibold">
+                      {currentUser.fullName
+                        .split(' ')
+                        .map((n) => n[0])
+                        .join('')
+                        .toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-xs font-medium text-foreground hidden lg:inline-block max-w-[100px] truncate">
+                    {currentUser.fullName.split(' ')[0]}
                   </span>
                 </div>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-60 shadow-lg border-border">
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-semibold leading-none">{currentUser.fullName}</p>
-                      <Badge className="bg-primary text-primary-foreground text-[9px] font-mono">
-                        Level {currentLevel || 3}
-                      </Badge>
-                    </div>
-                    <p className="text-xs leading-none text-muted-foreground">{currentUser.email}</p>
-                    <div className="flex items-center gap-1 mt-1.5 text-[10px] text-muted-foreground">
-                      <span>{currentUser.institution || 'Law School'}</span>
-                      <span>•</span>
-                      <span>{currentUser.currentStreak || 5} Day Streak 🔥</span>
-                    </div>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="p-0">
-                  <Link href="/dashboard" className="w-full px-2 py-1.5 cursor-pointer flex items-center gap-2 text-xs">
-                    <LayoutDashboard className="w-4 h-4 text-muted-foreground" />
-                    <span>Advocate Dashboard</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="p-0">
-                  <Link href="/performance" className="w-full px-2 py-1.5 cursor-pointer flex items-center gap-2 text-xs">
-                    <Award className="w-4 h-4 text-muted-foreground" />
-                    <span>Advocate Scorecard</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={openOnboarding} className="cursor-pointer flex items-center gap-2 text-xs">
-                  <Settings className="w-4 h-4 text-muted-foreground" />
-                  <span>Practice Preferences</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => {
-                    setAuthenticated(false);
-                    loginAsGuest();
-                  }}
-                  className="cursor-pointer text-muted-foreground hover:text-foreground flex items-center gap-2 text-xs"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span>Switch to Guest Mode</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={() => openAuthModal('login')} className="text-xs">
-                Sign In
-              </Button>
-              <Button size="sm" onClick={() => openAuthModal('register')} className="text-xs font-semibold">
-                Create Account
-              </Button>
-            </div>
-          )}
+              ) : (
+                <UserRound className="w-4 h-4 text-foreground/80" />
+              )}
+            </DropdownMenuTrigger>
 
-          {/* Mobile Menu Toggle Button */}
+            <DropdownMenuContent align="end" className="w-56 p-1.5 shadow-lg border border-border/80 bg-popover">
+              {isAuthenticated && currentUser ? (
+                <>
+                  <DropdownMenuLabel className="px-2.5 py-2">
+                    <div className="flex flex-col space-y-0.5">
+                      <p className="text-xs font-semibold text-foreground truncate">{currentUser.fullName}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">{currentUser.email}</p>
+                      <span className="inline-block mt-1 text-[10px] font-medium text-primary uppercase tracking-wider">
+                        {currentUser.role === 'administrator' ? 'Administrator' : currentUser.levelTitle || 'Student Advocate'}
+                      </span>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator className="my-1 bg-border/50" />
+                  <DropdownMenuItem onClick={() => router.push('/dashboard')} className="cursor-pointer text-xs py-2">
+                    <LayoutDashboard className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+                    Dashboard
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.push('/courtroom')} className="cursor-pointer text-xs py-2">
+                    <Mic className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+                    Virtual Courtroom
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.push('/workspace')} className="cursor-pointer text-xs py-2">
+                    <BookOpen className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+                    Legal Workspace
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.push('/performance')} className="cursor-pointer text-xs py-2">
+                    <BarChart3 className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+                    My Performance
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="my-1 bg-border/50" />
+                  <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-xs py-2 text-destructive focus:text-destructive">
+                    <LogOut className="w-3.5 h-3.5 mr-2" />
+                    Log Out
+                  </DropdownMenuItem>
+                </>
+              ) : (
+                <>
+                  <DropdownMenuLabel className="px-2.5 py-1.5 text-xs text-muted-foreground font-normal">
+                    Account Access
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem onClick={() => handleOpenAuth('register')} className="cursor-pointer text-xs py-2 font-medium">
+                    <UserPlus className="w-3.5 h-3.5 mr-2 text-primary" />
+                    Create Account
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleOpenAuth('login')} className="cursor-pointer text-xs py-2">
+                    <LogIn className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+                    Student Login
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="my-1 bg-border/50" />
+                  <DropdownMenuItem onClick={() => handleOpenAuth('admin')} className="cursor-pointer text-xs py-2 text-muted-foreground hover:text-foreground">
+                    <ShieldCheck className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+                    Admin Login
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Mobile Menu Toggle */}
           <Button
             variant="ghost"
-            size="icon"
-            className="md:hidden h-9 w-9 text-muted-foreground"
+            size="sm"
+            className="md:hidden p-2 text-muted-foreground hover:text-foreground"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle Menu"
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </Button>
         </div>
       </div>
 
-      {/* Mobile Drawer Menu */}
+      {/* ── Mobile Navigation Drawer ── */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-b border-border bg-background/95 backdrop-blur-md px-4 pt-2 pb-6 space-y-3">
-          <div className="space-y-1">
-            {navLinks.map((link) => {
-              const Icon = link.icon;
-              const isActive = pathname === link.href;
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium ${
-                    isActive ? 'bg-primary/10 text-primary font-semibold' : 'text-foreground hover:bg-muted'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon className="w-4 h-4" />
-                    <span>{link.name}</span>
-                  </div>
-                  {link.badge && (
-                    <Badge variant="secondary" className="text-[10px]">{link.badge}</Badge>
-                  )}
-                </Link>
-              );
-            })}
-          </div>
-
-          <div className="pt-3 border-t border-border flex flex-col gap-2">
-            <Link href="/courtroom" onClick={() => setMobileMenuOpen(false)}>
-              <Button className="w-full gap-2">
-                <Mic className="w-4 h-4" />
-                <span>Launch Virtual Courtroom</span>
-              </Button>
+        <div className="md:hidden border-t border-border/40 bg-background px-4 py-5 space-y-4 shadow-lg animate-in slide-in-from-top-2">
+          <nav className="flex flex-col space-y-2 text-sm font-medium">
+            <Link
+              href="/"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`px-3 py-2 rounded-md ${
+                pathname === '/' ? 'bg-primary/10 text-primary font-semibold' : 'text-muted-foreground hover:bg-muted/50'
+              }`}
+            >
+              Home
             </Link>
-            {!isAuthenticated && (
-              <Button variant="outline" onClick={() => { setMobileMenuOpen(false); openAuthModal('register'); }} className="w-full text-xs">
-                Create Free Student Account
+            <Link
+              href="/#about"
+              onClick={() => setMobileMenuOpen(false)}
+              className="px-3 py-2 rounded-md text-muted-foreground hover:bg-muted/50"
+            >
+              About Us
+            </Link>
+            <Link
+              href="/#contact"
+              onClick={() => setMobileMenuOpen(false)}
+              className="px-3 py-2 rounded-md text-muted-foreground hover:bg-muted/50"
+            >
+              Contact Us
+            </Link>
+
+            {isAuthenticated && (
+              <div className="pt-2 border-t border-border/50 space-y-1">
+                <p className="px-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Practice Portal</p>
+                <Link
+                  href="/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-3 py-2 flex items-center gap-2 rounded-md text-muted-foreground hover:bg-muted/50"
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  Dashboard
+                </Link>
+                <Link
+                  href="/courtroom"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-3 py-2 flex items-center gap-2 rounded-md text-muted-foreground hover:bg-muted/50"
+                >
+                  <Mic className="w-4 h-4" />
+                  Virtual Courtroom
+                </Link>
+                <Link
+                  href="/workspace"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-3 py-2 flex items-center gap-2 rounded-md text-muted-foreground hover:bg-muted/50"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  Legal Workspace
+                </Link>
+                <Link
+                  href="/performance"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-3 py-2 flex items-center gap-2 rounded-md text-muted-foreground hover:bg-muted/50"
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  My Performance
+                </Link>
+              </div>
+            )}
+          </nav>
+
+          <div className="pt-3 border-t border-border/40 flex flex-col gap-2">
+            <Button onClick={handleTryCourtly} className="w-full justify-center text-xs font-semibold">
+              Try Courtly
+            </Button>
+            {!isAuthenticated ? (
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <Button variant="outline" size="sm" onClick={() => handleOpenAuth('login')} className="text-xs">
+                  Student Login
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => handleOpenAuth('register')} className="text-xs">
+                  Create Account
+                </Button>
+              </div>
+            ) : (
+              <Button variant="outline" size="sm" onClick={handleSignOut} className="w-full text-xs text-destructive">
+                Log Out
               </Button>
             )}
           </div>

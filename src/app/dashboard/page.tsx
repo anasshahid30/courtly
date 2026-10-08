@@ -4,23 +4,38 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  Scale, Mic, BookOpen, BarChart3, Search, Filter,
-  Play, Clock, Award, Flame, CheckCircle2, ChevronRight,
-  Building2, Users, FilePlus, Sparkles, Database, Shield,
-  ArrowUpRight, AlertCircle, RefreshCw, UploadCloud, Gavel,
-  Lock, Check, Star, UserCheck, ArrowRight, UserPlus
+  LayoutDashboard,
+  Mic,
+  BookOpen,
+  BarChart3,
+  Clock,
+  ShieldCheck,
+  Play,
+  ArrowRight,
+  CheckCircle2,
+  Lock,
+  Layers,
+  Sparkles,
+  FileText,
+  UserPlus,
+  Plus,
+  Search,
+  Filter,
+  Users,
+  Building,
+  Sliders,
+  ChevronRight,
+  AlertCircle,
+  ExternalLink,
 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
+import { LevelSelector } from '@/components/legal/LevelSelector';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { mockDomains, mockSimulations, mockPerformanceReports } from '@/data/mock-data';
-import { mockAdvocacyLevels, mockAchievements, mockCertificates } from '@/data/learning-levels';
-import { AuthModal } from '@/components/auth/AuthModal';
-import { OnboardingModal } from '@/components/auth/OnboardingModal';
-import { CaseFileModal } from '@/components/legal/CaseFileModal';
-import { TransferSessionModal } from '@/components/auth/TransferSessionModal';
+import { Input } from '@/components/ui/input';
+import { mockSimulations, mockPerformanceReports } from '@/data/mock-data';
 import { toast } from 'sonner';
 
 export default function DashboardPage() {
@@ -30,615 +45,723 @@ export default function DashboardPage() {
     isAuthenticated,
     isGuestMode,
     currentLevel,
-    levelProgressPercentage,
     levels,
-    achievements,
-    certificates,
-    updateMilestoneStatus,
-    setActiveSimulation,
-    startCourtroomSession,
-    openCaseFileModal,
-    openOnboarding,
+    guestSession,
+    guestPerformance,
     openAuthModal,
-    loginAsStudent
+    startCourtroomSession,
+    setActiveSimulation,
   } = useAppStore();
 
-  const [activeTab, setActiveTab] = useState<string>('journey');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDomain, setSelectedDomain] = useState('all');
-  const [selectedDifficulty, setSelectedDifficulty] = useState('all');
-  const [selectedLevelFilter, setSelectedLevelFilter] = useState(3);
+  const [selectedPracticeLevel, setSelectedPracticeLevel] = useState<number>(
+    isGuestMode ? 1 : currentLevel
+  );
+  const [activeTab, setActiveTab] = useState<string>('overview');
+  const [adminSearchQuery, setAdminSearchQuery] = useState('');
 
-  // Filtered simulations
+  const currentLevelObj = levels.find((l) => l.levelNumber === currentLevel) || levels[2];
+  const selectedLevelObj = levels.find((l) => l.levelNumber === selectedPracticeLevel) || levels[0];
+
+  // Filter simulations based on selected practice level
   const filteredSimulations = mockSimulations.filter((sim) => {
-    const matchesSearch =
-      sim.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      sim.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      sim.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesDomain = selectedDomain === 'all' || sim.legalDomain.slug === selectedDomain || sim.legalDomain.id === selectedDomain;
-    const matchesDiff = selectedDifficulty === 'all' || sim.difficulty === selectedDifficulty;
-    return matchesSearch && matchesDomain && matchesDiff;
-  });
+    if (selectedPracticeLevel === 1) return sim.difficulty === 'beginner';
+    if (selectedPracticeLevel === 2) return sim.difficulty === 'beginner' || sim.difficulty === 'intermediate';
+    if (selectedPracticeLevel === 3) return sim.difficulty === 'intermediate';
+    return sim.difficulty === 'advanced';
+  }).slice(0, 3);
 
-  const handleLaunchSim = (sim: typeof mockSimulations[0]) => {
-    setActiveSimulation(sim);
-    startCourtroomSession(sim.id);
+  const handleLaunchSimulation = (simId?: string) => {
+    const targetSim = mockSimulations.find((s) => s.id === simId) || mockSimulations[0];
+    setActiveSimulation(targetSim);
+    startCourtroomSession(targetSim.id);
     router.push('/courtroom');
   };
 
-  const handleInspectCase = (sim: typeof mockSimulations[0]) => {
-    setActiveSimulation(sim);
-    openCaseFileModal();
-  };
-
-  const currentLevelData = levels.find((l) => l.levelNumber === currentLevel) || levels[2];
-
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground pb-20">
       
-      {/* ════════════════════════════════════════════════════════════ */}
-      {/* 1. GUEST MODE HEADER OR REGISTERED STUDENT PROFILE STRIP    */}
-      {/* ════════════════════════════════════════════════════════════ */}
-      <div className="border-b border-border bg-card/40 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* ── Dashboard Sub-Header ── */}
+      <div className="border-b border-border/40 bg-card/40 backdrop-blur-xs sticky top-16 z-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           
-          {/* GUEST MODE BANNER */}
-          {(!isAuthenticated || isGuestMode) ? (
-            <div className="p-5 rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 via-primary/5 to-card flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <Badge className="bg-primary text-primary-foreground text-[10px] font-mono">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+              <LayoutDashboard className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-sm font-semibold text-foreground">
+                  {currentUser?.role === 'administrator'
+                    ? 'Administrator Management Portal'
+                    : isGuestMode || !isAuthenticated
+                    ? 'Guest Practice Dashboard'
+                    : `${currentUser?.fullName}'s Dashboard`}
+                </h1>
+                {isGuestMode && (
+                  <Badge variant="outline" className="text-[10px] text-primary border-primary/30 bg-primary/5">
                     Guest Mode
                   </Badge>
-                  <span className="text-xs text-muted-foreground">Temporary Browser Session</span>
-                </div>
-                <h1 className="font-serif text-xl sm:text-2xl font-bold text-foreground">
-                  Welcome to Courtly Virtual Legal Practice
-                </h1>
-                <p className="text-xs text-muted-foreground max-w-2xl leading-relaxed">
-                  You are exploring in open guest access. Try simulations and receive instant judicial scoring. <strong>Save your progress</strong> by creating a free account to unlock persistent level milestones.
-                </p>
+                )}
+                {currentUser?.role === 'administrator' && (
+                  <Badge className="text-[10px] bg-primary text-primary-foreground">
+                    Admin Access
+                  </Badge>
+                )}
               </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                <Button
-                  size="sm"
-                  onClick={() => openAuthModal('register')}
-                  className="gap-1.5 text-xs font-semibold bg-primary text-primary-foreground shadow-xs"
-                >
-                  <UserPlus className="w-3.5 h-3.5" />
-                  <span>Create Account & Save</span>
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => loginAsStudent()}
-                  className="gap-1.5 text-xs border-border"
-                >
-                  <span>Demo Student Profile</span>
-                </Button>
-              </div>
-            </div>
-          ) : (
-            
-            /* REGISTERED STUDENT PROFILE HEADER */
-            <div className="space-y-6">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <h1 className="font-serif text-2xl font-bold text-foreground">
-                      Welcome back, {currentUser.fullName}
-                    </h1>
-                    <Badge className="bg-primary text-primary-foreground text-[10px] font-mono">
-                      Level {currentLevel}: {currentLevelData.title}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground flex items-center gap-2">
-                    <span>{currentUser.institution || 'Commonwealth Law School'}</span>
-                    <span>•</span>
-                    <span>{currentUser.degreeProgram || 'LLB Third Year'}</span>
-                    <span>•</span>
-                    <span className="text-primary font-medium">{currentUser.preferredJurisdiction || 'England & Wales'}</span>
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={openOnboarding}
-                    className="text-xs border-border gap-1.5"
-                  >
-                    <span>Practice Goals</span>
-                  </Button>
-                  <Link href="/courtroom">
-                    <Button size="sm" className="text-xs font-semibold gap-1.5 bg-primary shadow-xs">
-                      <Mic className="w-3.5 h-3.5" />
-                      <span>Launch Courtroom</span>
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-
-              {/* 4 Core Stat Cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="p-3.5 rounded-xl border border-border bg-card flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <span className="text-[10px] uppercase font-semibold text-muted-foreground">Current Level</span>
-                    <div className="text-lg font-bold text-primary flex items-center gap-1">
-                      <span>Level 0{currentLevel}</span>
-                    </div>
-                    <div className="text-[10px] text-muted-foreground">{levelProgressPercentage}% to Level {currentLevel + 1}</div>
-                  </div>
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                    <Award className="w-5 h-5" />
-                  </div>
-                </div>
-
-                <div className="p-3.5 rounded-xl border border-border bg-card flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <span className="text-[10px] uppercase font-semibold text-muted-foreground">Practice Hours</span>
-                    <div className="text-lg font-bold text-foreground">{currentUser.totalPracticeHours}h</div>
-                    <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">+3.2h this week</div>
-                  </div>
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                    <Clock className="w-5 h-5" />
-                  </div>
-                </div>
-
-                <div className="p-3.5 rounded-xl border border-border bg-card flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <span className="text-[10px] uppercase font-semibold text-muted-foreground">Advocate Average</span>
-                    <div className="text-lg font-bold text-primary">{currentUser.averageScore}%</div>
-                    <div className="text-[10px] text-muted-foreground">First Class Honours</div>
-                  </div>
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                    <Gavel className="w-5 h-5" />
-                  </div>
-                </div>
-
-                <div className="p-3.5 rounded-xl border border-border bg-card flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <span className="text-[10px] uppercase font-semibold text-muted-foreground">Advocacy Streak</span>
-                    <div className="text-lg font-bold text-amber-500 flex items-center gap-1">
-                      <span>{currentUser.currentStreak} Days</span>
-                      <Flame className="w-4 h-4 fill-current" />
-                    </div>
-                    <div className="text-[10px] text-muted-foreground">Active practice record</div>
-                  </div>
-                  <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center">
-                    <Flame className="w-5 h-5" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ════════════════════════════════════════════════════════════ */}
-      {/* 2. MAIN DASHBOARD CONTENT TABS                              */}
-      {/* ════════════════════════════════════════════════════════════ */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
-          <div className="flex items-center justify-between border-b border-border pb-2 overflow-x-auto">
-            <TabsList className="bg-muted/50 p-1">
-              <TabsTrigger value="journey" className="text-xs gap-1.5">
-                <Award className="w-3.5 h-3.5" />
-                <span>My Learning Journey</span>
-              </TabsTrigger>
-              <TabsTrigger value="simulations" className="text-xs gap-1.5">
-                <Scale className="w-3.5 h-3.5" />
-                <span>Practice Simulations</span>
-              </TabsTrigger>
-              <TabsTrigger value="history" className="text-xs gap-1.5">
-                <Clock className="w-3.5 h-3.5" />
-                <span>Session History</span>
-              </TabsTrigger>
-              <TabsTrigger value="achievements" className="text-xs gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Achievements</span>
-              </TabsTrigger>
-              <TabsTrigger value="certificates" className="text-xs gap-1.5">
-                <Shield className="w-3.5 h-3.5" />
-                <span>Certifications</span>
-              </TabsTrigger>
-              {currentUser.role === 'educator' && (
-                <TabsTrigger value="educator" className="text-xs gap-1.5">
-                  <Building2 className="w-3.5 h-3.5" />
-                  <span>Educator Portal</span>
-                </TabsTrigger>
-              )}
-            </TabsList>
-
-            <div className="text-xs text-muted-foreground hidden sm:block">
-              Jurisdiction: <strong>England & Wales</strong>
+              <p className="text-[11px] text-muted-foreground">
+                Common Law Advocacy Curriculum • England & Wales
+              </p>
             </div>
           </div>
 
-          {/* ════ TAB 1: 5-LEVEL LEARNING JOURNEY ════ */}
-          <TabsContent value="journey" className="space-y-8 m-0">
-            
-            {/* Level Selector Pills */}
-            <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
-              {levels.map((lvl) => {
-                const isCurrent = lvl.levelNumber === currentLevel;
-                const isSelected = selectedLevelFilter === lvl.levelNumber;
-                return (
-                  <button
-                    key={lvl.levelNumber}
-                    type="button"
-                    onClick={() => setSelectedLevelFilter(lvl.levelNumber)}
-                    className={`p-3.5 rounded-xl border text-left transition-all space-y-1.5 ${
-                      isSelected
-                        ? 'border-primary bg-primary/10 ring-1 ring-primary shadow-xs'
-                        : 'border-border bg-card hover:bg-muted/40'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-mono font-bold text-primary">LEVEL 0{lvl.levelNumber}</span>
-                      <Badge
-                        variant={lvl.isCompleted ? 'default' : lvl.isUnlocked ? 'secondary' : 'outline'}
-                        className="text-[9px]"
-                      >
-                        {lvl.isCompleted ? 'Completed' : lvl.isUnlocked ? 'Active' : 'Locked'}
-                      </Badge>
-                    </div>
-                    <div className="font-serif font-bold text-xs text-foreground line-clamp-1">{lvl.title}</div>
-                    <div className="w-full h-1 rounded-full bg-muted overflow-hidden">
-                      <div className="h-full bg-primary rounded-full" style={{ width: `${lvl.progressPercentage}%` }} />
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+          {/* Quick Navigation Tabs */}
+          <div className="flex items-center gap-1.5 overflow-x-auto">
+            <Button
+              variant={activeTab === 'overview' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveTab('overview')}
+              className="text-xs h-8 px-3 font-medium"
+            >
+              Dashboard
+            </Button>
+            <Link
+              href="/courtroom"
+              className="text-xs h-8 px-3 font-medium text-muted-foreground hover:text-foreground inline-flex items-center justify-center rounded-md hover:bg-muted/50 transition-colors"
+            >
+              Virtual Courtroom
+            </Link>
+            <Link
+              href="/workspace"
+              className="text-xs h-8 px-3 font-medium text-muted-foreground hover:text-foreground inline-flex items-center justify-center rounded-md hover:bg-muted/50 transition-colors"
+            >
+              Legal Workspace
+            </Link>
+            <Link
+              href="/performance"
+              className="text-xs h-8 px-3 font-medium text-muted-foreground hover:text-foreground inline-flex items-center justify-center rounded-md hover:bg-muted/50 transition-colors"
+            >
+              My Performance
+            </Link>
+            <Button
+              variant={activeTab === 'history' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveTab('history')}
+              className="text-xs h-8 px-3 font-medium text-muted-foreground hover:text-foreground"
+            >
+              History
+            </Button>
+            {currentUser?.role === 'administrator' && (
+              <Button
+                variant={activeTab === 'admin' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setActiveTab('admin')}
+                className="text-xs h-8 px-3 font-medium text-primary hover:text-primary"
+              >
+                Admin Portal
+              </Button>
+            )}
+          </div>
 
-            {/* Selected Level Deep-Dive Breakdown */}
-            {(() => {
-              const activeLevelView = levels.find((l) => l.levelNumber === selectedLevelFilter) || levels[2];
-              return (
-                <div className="p-6 rounded-2xl border border-border bg-card space-y-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 pb-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Badge className="bg-primary text-primary-foreground text-xs font-mono">
-                          Level {activeLevelView.levelNumber}
-                        </Badge>
-                        <h3 className="font-serif text-xl font-bold text-foreground">
-                          {activeLevelView.title} — {activeLevelView.subtitle}
-                        </h3>
-                      </div>
-                      <p className="text-xs text-muted-foreground">{activeLevelView.description}</p>
-                    </div>
+        </div>
+      </div>
 
-                    <div className="text-right shrink-0">
-                      <div className="text-sm font-bold text-primary">{activeLevelView.progressPercentage}% Complete</div>
-                      <div className="text-[10px] text-muted-foreground">Min. Passing Threshold: {activeLevelView.minPassingScore}%</div>
-                    </div>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-8">
+        
+        {/* ══════════════════════════════════════════════════════════
+            TAB: OVERVIEW (GUEST vs REGISTERED)
+           ══════════════════════════════════════════════════════════ */}
+        {activeTab === 'overview' && (
+          <>
+            {/* ── GUEST DASHBOARD VIEW ── */}
+            {isGuestMode || !isAuthenticated ? (
+              <div className="space-y-8">
+                
+                {/* Guest Welcome Banner */}
+                <div className="p-6 sm:p-8 rounded-2xl border border-border/80 bg-gradient-to-r from-card via-card to-muted/20 space-y-4">
+                  <div className="max-w-2xl space-y-2">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">
+                      Instant Guest Practice
+                    </span>
+                    <h2 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">
+                      Welcome to Courtly
+                    </h2>
+                    <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                      Choose your preferred advocacy level and start practicing immediately. No account or credentials required.
+                    </p>
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    
-                    {/* Milestones Checklist */}
-                    <div className="space-y-3">
-                      <span className="text-xs font-semibold text-foreground uppercase tracking-wider">
-                        Required Clinical Milestones
-                      </span>
-                      <div className="space-y-2">
-                        {activeLevelView.milestones.map((m) => (
-                          <div
-                            key={m.id}
-                            className={`p-3 rounded-xl border flex items-start justify-between gap-3 text-xs ${
-                              m.isCompleted ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border bg-muted/20'
-                            }`}
-                          >
-                            <div className="flex items-start gap-2.5">
-                              <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                                m.isCompleted ? 'bg-emerald-500 text-white' : 'border border-muted-foreground/40 text-muted-foreground'
-                              }`}>
-                                {m.isCompleted ? <Check className="w-3 h-3 stroke-[3]" /> : <span className="text-[9px]">○</span>}
-                              </div>
-                              <div className="space-y-0.5">
-                                <div className="font-semibold text-foreground">{m.title}</div>
-                                <p className="text-[11px] text-muted-foreground leading-relaxed">{m.description}</p>
-                              </div>
-                            </div>
-
-                            <Badge variant="outline" className="text-[9px] capitalize shrink-0">
-                              {m.category}
-                            </Badge>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Demonstrated Competencies & Practice Trigger */}
-                    <div className="space-y-4">
-                      <div className="space-y-3">
-                        <span className="text-xs font-semibold text-foreground uppercase tracking-wider">
-                          Demonstrated Competencies
-                        </span>
-                        <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-2">
-                          {activeLevelView.requiredSkills.map((skill, i) => (
-                            <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
-                              <span>{skill}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-3">
-                        <div className="space-y-1">
-                          <div className="text-xs font-semibold text-foreground">Clinical Exit Assessment Requirement:</div>
-                          <p className="text-[11px] text-muted-foreground">{activeLevelView.assessmentRequirement}</p>
-                        </div>
-                        <Link href="/courtroom" className="block">
-                          <Button size="sm" className="w-full text-xs font-semibold gap-1.5">
-                            <Mic className="w-3.5 h-3.5" />
-                            <span>Launch Level {activeLevelView.levelNumber} Practice Simulation</span>
-                          </Button>
-                        </Link>
-                      </div>
-                    </div>
+                  <div className="pt-2 flex flex-wrap items-center gap-3">
+                    <Button
+                      onClick={() => handleLaunchSimulation()}
+                      className="text-xs font-semibold shadow-xs bg-primary text-primary-foreground hover:bg-primary/90 px-5 py-2.5 h-auto"
+                    >
+                      <Play className="w-3.5 h-3.5 mr-2 fill-current" />
+                      Start Courtroom Simulation
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => openAuthModal('register')}
+                      className="text-xs font-medium border-border hover:bg-muted/50 px-4 py-2.5 h-auto"
+                    >
+                      <UserPlus className="w-3.5 h-3.5 mr-2" />
+                      Save Progress (Create Free Account)
+                    </Button>
                   </div>
                 </div>
-              );
-            })()}
-          </TabsContent>
 
-          {/* ════ TAB 2: PRACTICE SIMULATIONS ════ */}
-          <TabsContent value="simulations" className="space-y-6 m-0">
-            
-            {/* Search & Domain Filter Bar */}
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-                <div className="relative w-full sm:w-96">
-                  <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted-foreground" />
-                  <Input
-                    placeholder="Search simulations by case name, statute, topic..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 h-9 text-xs"
+                {/* Level Selection Component */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">Select Practice Difficulty</h3>
+                      <p className="text-xs text-muted-foreground">
+                        Select any level to preview matching courtroom scenarios and legal challenges.
+                      </p>
+                    </div>
+                  </div>
+                  <LevelSelector
+                    selectedLevel={selectedPracticeLevel}
+                    onSelectLevel={(lvl) => setSelectedPracticeLevel(lvl)}
                   />
                 </div>
 
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <select
-                    value={selectedDifficulty}
-                    onChange={(e) => setSelectedDifficulty(e.target.value)}
-                    className="h-9 px-3 rounded-md border border-border bg-card text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
-                  >
-                    <option value="all">All Difficulties</option>
-                    <option value="beginner">Beginner</option>
-                    <option value="intermediate">Intermediate</option>
-                    <option value="advanced">Advanced</option>
-                  </select>
-                </div>
-              </div>
+                {/* Recommended Simulations for Selected Level */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">
+                        Recommended Simulations for Level {selectedPracticeLevel}: {selectedLevelObj.title}
+                      </h3>
+                      <p className="text-xs text-muted-foreground">{selectedLevelObj.description}</p>
+                    </div>
+                  </div>
 
-              {/* Domain Pills */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-2">
-                <button
-                  type="button"
-                  onClick={() => setSelectedDomain('all')}
-                  className={`text-xs px-3 py-1.5 rounded-full border transition-all shrink-0 ${
-                    selectedDomain === 'all'
-                      ? 'bg-primary text-primary-foreground border-primary font-medium shadow-xs'
-                      : 'bg-card border-border text-muted-foreground hover:border-primary/40'
-                  }`}
-                >
-                  All Practice Areas
-                </button>
-                {mockDomains.map((dom) => (
-                  <button
-                    key={dom.id}
-                    type="button"
-                    onClick={() => setSelectedDomain(dom.slug)}
-                    className={`text-xs px-3 py-1.5 rounded-full border transition-all shrink-0 flex items-center gap-1.5 ${
-                      selectedDomain === dom.slug
-                        ? 'bg-primary text-primary-foreground border-primary font-medium shadow-xs'
-                        : 'bg-card border-border text-muted-foreground hover:border-primary/40'
-                    }`}
-                  >
-                    <span>{dom.name}</span>
-                    {dom.availability !== 'available' && (
-                      <span className="text-[9px] opacity-70">({dom.availability === 'coming_soon' ? 'Soon' : 'Dev'})</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Simulation Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredSimulations.map((sim) => (
-                <div
-                  key={sim.id}
-                  className="rounded-2xl border border-border bg-card hover:border-primary/50 hover:shadow-md transition-all flex flex-col justify-between overflow-hidden"
-                >
-                  <div className="p-5 space-y-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <Badge variant="outline" className="text-[10px] font-medium capitalize">
-                        {sim.legalDomain.name}
-                      </Badge>
-                      <Badge
-                        variant={sim.difficulty === 'beginner' ? 'secondary' : sim.difficulty === 'intermediate' ? 'default' : 'destructive'}
-                        className="text-[10px] capitalize"
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {filteredSimulations.map((sim) => (
+                      <div
+                        key={sim.id}
+                        className="p-5 rounded-xl border border-border/70 bg-card hover:border-primary/40 transition-all flex flex-col justify-between space-y-4 shadow-xs"
                       >
-                        {sim.difficulty}
-                      </Badge>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border/50">
+                              {sim.domain || sim.legalDomain?.name || 'Commercial Law'}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground">
+                              {sim.estimatedDurationMinutes || sim.estimatedDuration || 18} mins
+                            </span>
+                          </div>
+                          <h4 className="text-sm font-semibold text-foreground leading-snug">{sim.title}</h4>
+                          <p className="text-xs text-muted-foreground line-clamp-2">{sim.description}</p>
+                        </div>
+
+                        <div className="pt-2 border-t border-border/40 flex items-center justify-between">
+                          <span className="text-[11px] font-medium text-primary capitalize">
+                            {sim.difficulty}
+                          </span>
+                          <Button
+                            size="sm"
+                            onClick={() => handleLaunchSimulation(sim.id)}
+                            className="text-xs h-8 px-3"
+                          >
+                            <Play className="w-3 h-3 mr-1.5 fill-current" />
+                            Enter Courtroom
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Recent Guest Performance (if exists) */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-foreground">Recent Session Evaluation</h3>
+                  {guestPerformance ? (
+                    <div className="p-6 rounded-xl border border-border/80 bg-card space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/40">
+                        <div>
+                          <p className="text-xs font-semibold text-foreground">Session: {guestPerformance.simulationTitle}</p>
+                          <p className="text-[11px] text-muted-foreground">Evaluated under English Common Law Rubric</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl font-bold font-serif text-primary">{guestPerformance.overallScore}%</span>
+                          <span className="text-xs text-muted-foreground">Overall Score</span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                        <div className="p-3 rounded-lg bg-muted/40 space-y-1">
+                          <span className="font-semibold text-foreground">Observed Strengths:</span>
+                          <p className="text-muted-foreground">{guestPerformance.strengthsSummary || guestPerformance.strengths?.[0]}</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-muted/40 space-y-1">
+                          <span className="font-semibold text-foreground">Areas for Improvement:</span>
+                          <p className="text-muted-foreground">{guestPerformance.areasForImprovementSummary || guestPerformance.improvements?.[0]}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end pt-2">
+                        <Link
+                          href="/performance"
+                          className="text-xs font-medium border border-border rounded-lg px-3 py-1.5 hover:bg-muted/50 transition-colors inline-flex items-center"
+                        >
+                          View Full Performance Scorecard
+                        </Link>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-8 rounded-xl border border-dashed border-border/80 bg-muted/10 text-center space-y-2">
+                      <p className="text-xs font-medium text-foreground">No Practice Sessions Completed Yet</p>
+                      <p className="text-[11px] text-muted-foreground max-w-sm mx-auto">
+                        Launch a simulation above to practice oral submissions and receive instant judicial rubric scoring.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Save Progress Prompt */}
+                <div className="p-5 rounded-xl border border-primary/20 bg-primary/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-foreground">Want to save your simulations and track milestones?</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Create a free student account to retain your historical scores, research notes, and earn verifiable certificates.
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => openAuthModal('register')}
+                    className="text-xs whitespace-nowrap"
+                  >
+                    Create Account
+                  </Button>
+                </div>
+
+              </div>
+            ) : (
+              /* ── REGISTERED STUDENT DASHBOARD VIEW ── */
+              <div className="space-y-8">
+                
+                {/* 1. Welcome & Level Progress Banner */}
+                <div className="p-6 sm:p-8 rounded-2xl border border-border/80 bg-gradient-to-r from-card via-card to-muted/20 space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-primary">
+                        Student Practice Portal
+                      </span>
+                      <h2 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">
+                        Welcome back, {currentUser?.fullName}
+                      </h2>
+                      <p className="text-xs text-muted-foreground">
+                        {currentUser?.institution} • {currentUser?.degreeProgram || 'LLB Law'}
+                      </p>
                     </div>
 
-                    <h4 className="font-serif text-base font-bold text-foreground leading-snug">
-                      {sim.title}
-                    </h4>
+                    <div className="flex items-center gap-3 bg-muted/60 px-4 py-2.5 rounded-xl border border-border/60">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center font-serif text-sm font-bold text-primary">
+                        L{currentLevel}
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-foreground">{currentUser?.levelTitle}</p>
+                        <p className="text-[11px] text-muted-foreground">Level {currentLevel} of 5</p>
+                      </div>
+                    </div>
+                  </div>
 
-                    <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
-                      {sim.description}
-                    </p>
+                  {/* Level Progress Bar & Next Milestone */}
+                  <div className="space-y-2 pt-2 border-t border-border/40">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-medium text-foreground">Level {currentLevel} Milestone Progression</span>
+                      <span className="text-primary font-semibold">{currentLevelObj.progressPercentage}% Complete</span>
+                    </div>
+                    <Progress value={currentLevelObj.progressPercentage} className="h-2" />
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1">
+                      <span>Next milestone: {currentLevelObj.milestones.find(m => !m.isCompleted)?.title || 'Final Assessment'}</span>
+                      <span>Min passing score: {currentLevelObj.minPassingScore}%</span>
+                    </div>
+                  </div>
+                </div>
 
-                    <div className="flex flex-wrap gap-1 pt-1">
-                      {sim.tags.map((tag) => (
-                        <span key={tag} className="text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground">
-                          #{tag}
-                        </span>
+                {/* 2. Quick Key Statistics (4 Clean Cards) */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="p-4 rounded-xl border border-border/60 bg-card space-y-1">
+                    <span className="text-[11px] text-muted-foreground">Simulations Completed</span>
+                    <p className="text-2xl font-bold font-serif text-foreground">{currentUser?.completedSimulations || 12}</p>
+                    <span className="text-[10px] text-muted-foreground">Across 3 domains</span>
+                  </div>
+
+                  <div className="p-4 rounded-xl border border-border/60 bg-card space-y-1">
+                    <span className="text-[11px] text-muted-foreground">Practice Hours</span>
+                    <p className="text-2xl font-bold font-serif text-foreground">{currentUser?.totalPracticeHours || 28.5}h</p>
+                    <span className="text-[10px] text-muted-foreground">Oral advocacy practice</span>
+                  </div>
+
+                  <div className="p-4 rounded-xl border border-border/60 bg-card space-y-1">
+                    <span className="text-[11px] text-muted-foreground">Average Judicial Score</span>
+                    <p className="text-2xl font-bold font-serif text-primary">{currentUser?.averageScore || 74}%</p>
+                    <span className="text-[10px] text-muted-foreground">+6% from last term</span>
+                  </div>
+
+                  <div className="p-4 rounded-xl border border-border/60 bg-card space-y-1">
+                    <span className="text-[11px] text-muted-foreground">Current Level</span>
+                    <p className="text-2xl font-bold font-serif text-foreground">Level {currentLevel}</p>
+                    <span className="text-[10px] text-muted-foreground">{currentUser?.levelTitle}</span>
+                  </div>
+                </div>
+
+                {/* 3. Level Selection Component */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">Learning Levels & Practice Difficulty</h3>
+                      <p className="text-xs text-muted-foreground">
+                        Select your active practice tier to view curriculum simulations and assessment milestones.
+                      </p>
+                    </div>
+                  </div>
+                  <LevelSelector
+                    selectedLevel={selectedPracticeLevel}
+                    onSelectLevel={(lvl) => setSelectedPracticeLevel(lvl)}
+                  />
+                </div>
+
+                {/* 4. Continue Practicing & Recommended Simulations */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  
+                  {/* Last Unfinished / Priority Simulation */}
+                  <div className="lg:col-span-1 p-5 rounded-xl border border-primary/30 bg-primary/5 space-y-4 flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+                        Continue Practicing
+                      </span>
+                      <h4 className="text-base font-semibold text-foreground">
+                        Henderson v Caldwell Trading Ltd
+                      </h4>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Commercial contract dispute concerning fitness for purpose under Sale of Goods Act 1979 s.14(2).
+                      </p>
+                      <div className="pt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
+                        <span>Commercial Law</span>
+                        <span>•</span>
+                        <span>Stage 4 of 6</span>
+                      </div>
+                    </div>
+
+                    <Button
+                      onClick={() => handleLaunchSimulation('sim-1')}
+                      className="w-full text-xs font-semibold shadow-xs"
+                    >
+                      <Play className="w-3.5 h-3.5 mr-2 fill-current" />
+                      Resume Courtroom Hearing
+                    </Button>
+                  </div>
+
+                  {/* Recommended Practice for Current Level */}
+                  <div className="lg:col-span-2 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-foreground">
+                        Recommended Practice (Level {selectedPracticeLevel})
+                      </h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {filteredSimulations.slice(0, 2).map((sim) => (
+                        <div
+                          key={sim.id}
+                          className="p-4 rounded-xl border border-border/60 bg-card hover:border-border transition-colors space-y-3 flex flex-col justify-between"
+                        >
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-semibold uppercase px-1.5 py-0.2 rounded bg-muted text-muted-foreground">
+                                {sim.domain || sim.legalDomain?.name || 'Commercial Law'}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground">
+                                {sim.estimatedDurationMinutes || sim.estimatedDuration || 18}m
+                              </span>
+                            </div>
+                            <h4 className="text-xs font-semibold text-foreground">{sim.title}</h4>
+                            <p className="text-[11px] text-muted-foreground line-clamp-2">{sim.description}</p>
+                          </div>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleLaunchSimulation(sim.id)}
+                            className="w-full text-xs h-8"
+                          >
+                            Practice Scenario
+                          </Button>
+                        </div>
                       ))}
                     </div>
                   </div>
 
-                  <div className="p-4 border-t border-border/60 bg-muted/20 flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" />
-                      {sim.estimatedDuration} mins
-                    </span>
-
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleInspectCase(sim)}
-                        className="h-8 text-xs text-muted-foreground hover:text-foreground"
-                      >
-                        Case File
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => handleLaunchSim(sim)}
-                        className="h-8 text-xs gap-1 font-semibold"
-                      >
-                        <Play className="w-3 h-3 fill-current" />
-                        <span>Enter</span>
-                      </Button>
-                    </div>
-                  </div>
                 </div>
-              ))}
-            </div>
-          </TabsContent>
 
-          {/* ════ TAB 3: SESSION HISTORY ════ */}
-          <TabsContent value="history" className="space-y-4 m-0">
-            <div className="rounded-xl border border-border bg-card overflow-hidden">
-              <div className="p-4 border-b border-border bg-muted/20 font-semibold text-xs text-foreground flex items-center justify-between">
-                <span>Completed Courtroom Proceedings & Transcripts</span>
-                <span className="text-[10px] text-muted-foreground font-normal">All transcripts preserved</span>
-              </div>
-
-              <div className="divide-y divide-border text-xs">
-                {[
-                  { title: 'Henderson v Caldwell Trading Ltd', role: 'Claimant Counsel', date: 'Yesterday, 14:30', score: 84, duration: '45 mins', result: 'Judgment for Claimant' },
-                  { title: 'Henderson v Caldwell Trading Ltd (Trial Run)', role: 'Claimant Counsel', date: '3 Oct 2025', score: 78, duration: '40 mins', result: 'Evaluated' },
-                  { title: 'Whitfield Industries v Apex Logistics', role: 'Defendant Counsel', date: '28 Sep 2025', score: 81, duration: '35 mins', result: 'Settled' },
-                ].map((item, i) => (
-                  <div key={i} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-muted/30 transition-colors">
-                    <div className="space-y-0.5">
-                      <div className="font-semibold text-foreground text-sm">{item.title}</div>
-                      <div className="text-[11px] text-muted-foreground">
-                        {item.role} • {item.date} • {item.duration}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <div className="font-bold text-primary text-sm">{item.score}% Score</div>
-                        <div className="text-[10px] text-emerald-600 dark:text-emerald-400">{item.result}</div>
-                      </div>
-                      <Link href="/performance">
-                        <Button variant="outline" size="sm" className="h-8 text-xs">
-                          View Report
-                        </Button>
-                      </Link>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </TabsContent>
-
-          {/* ════ TAB 4: ACHIEVEMENTS ════ */}
-          <TabsContent value="achievements" className="space-y-6 m-0">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {achievements.map((ach) => (
-                <div
-                  key={ach.id}
-                  className={`p-4 rounded-2xl border transition-all space-y-2 ${
-                    ach.isUnlocked
-                      ? 'border-border bg-card shadow-xs'
-                      : 'border-border/40 bg-muted/20 opacity-65'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold ${
-                      ach.isUnlocked ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
-                    }`}>
-                      <Sparkles className="w-4 h-4" />
-                    </div>
-                    <Badge variant={ach.isUnlocked ? 'default' : 'outline'} className="text-[9px] capitalize">
-                      {ach.isUnlocked ? 'Unlocked' : 'In Progress'}
-                    </Badge>
-                  </div>
-                  <div className="font-serif font-bold text-sm text-foreground">{ach.title}</div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{ach.description}</p>
-                  {ach.unlockedAt && (
-                    <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium pt-1">
-                      Unlocked on {ach.unlockedAt}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </TabsContent>
-
-          {/* ════ TAB 5: CERTIFICATIONS ROADMAP ════ */}
-          <TabsContent value="certificates" className="space-y-6 m-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {certificates.map((cert) => (
-                <div
-                  key={cert.id}
-                  className="p-5 rounded-2xl border border-border bg-card space-y-3.5 flex flex-col justify-between"
-                >
-                  <div className="space-y-2">
+                {/* 5. Recent Sessions Table & Performance Preview */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  
+                  {/* Recent Sessions List */}
+                  <div className="lg:col-span-2 rounded-xl border border-border/70 bg-card p-5 space-y-4">
                     <div className="flex items-center justify-between">
-                      <Badge variant="outline" className="font-mono text-[10px]">
-                        Level {cert.levelNumber} Credential
-                      </Badge>
-                      <Badge
-                        variant={cert.status === 'issued' ? 'default' : cert.status === 'requirements_in_progress' ? 'secondary' : 'outline'}
-                        className="text-[10px] capitalize"
+                      <h3 className="text-sm font-semibold text-foreground">Recent Courtroom Sessions</h3>
+                      <button
+                        onClick={() => setActiveTab('history')}
+                        className="text-xs text-primary hover:underline font-medium"
                       >
-                        {cert.status.replace(/_/g, ' ')}
-                      </Badge>
+                        View All
+                      </button>
                     </div>
-                    <h4 className="font-serif font-bold text-base text-foreground">{cert.title}</h4>
-                    <p className="text-xs text-muted-foreground leading-relaxed">{cert.accreditationNote}</p>
+
+                    <div className="space-y-2.5">
+                      {mockPerformanceReports.slice(0, 3).map((report) => (
+                        <div
+                          key={report.id}
+                          className="p-3 rounded-lg border border-border/40 bg-muted/20 flex items-center justify-between gap-4 text-xs"
+                        >
+                          <div className="space-y-0.5">
+                            <p className="font-semibold text-foreground">{report.simulationTitle}</p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {report.domain || 'Commercial Law'} • Completed 2026-03-08
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <span className="font-bold font-serif text-primary text-sm">{report.overallScore}%</span>
+                              <p className="text-[10px] text-muted-foreground">Rubric Score</p>
+                            </div>
+                            <Link
+                              href="/performance"
+                              className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground inline-flex items-center justify-center rounded-md hover:bg-muted/60 transition-colors"
+                            >
+                              Review
+                            </Link>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
-                  <div className="p-3 rounded-lg bg-muted/30 border border-border text-[11px] space-y-1">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Jurisdiction:</span>
-                      <span className="font-medium text-foreground">{cert.jurisdiction}</span>
-                    </div>
-                    {cert.verificationId && (
-                      <div className="flex justify-between font-mono">
-                        <span className="text-muted-foreground">Verification ID:</span>
-                        <span className="text-primary font-bold">{cert.verificationId}</span>
+                  {/* Performance Summary Preview Card */}
+                  <div className="rounded-xl border border-border/70 bg-card p-5 space-y-4 flex flex-col justify-between">
+                    <div className="space-y-3">
+                      <h3 className="text-sm font-semibold text-foreground">Advocacy Competencies</h3>
+                      <div className="space-y-2.5 text-xs">
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px]">
+                            <span className="text-muted-foreground">Legal Analysis</span>
+                            <span className="font-medium text-foreground">82%</span>
+                          </div>
+                          <Progress value={82} className="h-1.5" />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px]">
+                            <span className="text-muted-foreground">Courtroom Etiquette</span>
+                            <span className="font-medium text-foreground">90%</span>
+                          </div>
+                          <Progress value={90} className="h-1.5" />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px]">
+                            <span className="text-muted-foreground">Evidence Tendering</span>
+                            <span className="font-medium text-foreground">75%</span>
+                          </div>
+                          <Progress value={75} className="h-1.5" />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px]">
+                            <span className="text-muted-foreground">Objection Handling</span>
+                            <span className="font-medium text-foreground">68%</span>
+                          </div>
+                          <Progress value={68} className="h-1.5" />
+                        </div>
                       </div>
-                    )}
+                    </div>
+
+                    <Link
+                      href="/performance"
+                      className="w-full text-xs border border-border rounded-lg py-2 inline-flex items-center justify-center hover:bg-muted/50 transition-colors text-foreground font-medium"
+                    >
+                      View Full Performance Analytics
+                    </Link>
+                  </div>
+
+                </div>
+
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════
+            TAB: HISTORY
+           ══════════════════════════════════════════════════════════ */}
+        {activeTab === 'history' && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-base font-semibold text-foreground">Simulation & Session History</h2>
+                <p className="text-xs text-muted-foreground">
+                  Review past courtroom proceedings, transcripts, judicial rulings, and case briefs.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {mockPerformanceReports.map((report) => (
+                <div
+                  key={report.id}
+                  className="p-4 rounded-xl border border-border/70 bg-card flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                        {report.domain || 'Commercial Law'}
+                      </span>
+                      <span className="text-muted-foreground text-[11px]">Duration: 18 mins</span>
+                    </div>
+                    <h4 className="text-sm font-semibold text-foreground">{report.simulationTitle}</h4>
+                    <p className="text-muted-foreground line-clamp-1">
+                      {report.strengthsSummary || report.strengths?.[0] || 'Competent legal submissions'}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-4 shrink-0">
+                    <div className="text-right">
+                      <span className="text-base font-bold font-serif text-primary">{report.overallScore}%</span>
+                      <p className="text-[10px] text-muted-foreground">Judicial Score</p>
+                    </div>
+                    <Link
+                      href="/performance"
+                      className="text-xs border border-border rounded-lg px-3 py-1.5 hover:bg-muted/50 transition-colors inline-flex items-center"
+                    >
+                      View Scorecard
+                    </Link>
                   </div>
                 </div>
               ))}
             </div>
-          </TabsContent>
-        </Tabs>
-      </main>
+          </div>
+        )}
 
-      {/* Global Modals */}
-      <AuthModal />
-      <OnboardingModal />
-      <CaseFileModal />
-      <TransferSessionModal />
+        {/* ══════════════════════════════════════════════════════════
+            TAB: ADMIN PORTAL (PROTECTED / FACULTY VIEW)
+           ══════════════════════════════════════════════════════════ */}
+        {activeTab === 'admin' && currentUser?.role === 'administrator' && (
+          <div className="space-y-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-base font-semibold text-foreground">Faculty & Administration Workspace</h2>
+                <p className="text-xs text-muted-foreground">
+                  Manage academic cohorts, courtroom scenario parameters, statutory knowledge bases, and grading rubrics.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="sm" onClick={() => toast.success('New scenario wizard opened')} className="text-xs">
+                  <Plus className="w-3.5 h-3.5 mr-1.5" />
+                  Create Simulation
+                </Button>
+              </div>
+            </div>
+
+            {/* Admin Metric Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="p-4 rounded-xl border border-border/60 bg-card space-y-1">
+                <span className="text-[11px] text-muted-foreground">Active Students</span>
+                <p className="text-2xl font-bold font-serif text-foreground">142</p>
+                <span className="text-[10px] text-muted-foreground">Across 4 cohorts</span>
+              </div>
+              <div className="p-4 rounded-xl border border-border/60 bg-card space-y-1">
+                <span className="text-[11px] text-muted-foreground">Published Scenarios</span>
+                <p className="text-2xl font-bold font-serif text-foreground">18</p>
+                <span className="text-[10px] text-muted-foreground">Common Law (UK/US)</span>
+              </div>
+              <div className="p-4 rounded-xl border border-border/60 bg-card space-y-1">
+                <span className="text-[11px] text-muted-foreground">Ingested Statutes</span>
+                <p className="text-2xl font-bold font-serif text-foreground">24</p>
+                <span className="text-[10px] text-muted-foreground">RAG Vector Indexed</span>
+              </div>
+              <div className="p-4 rounded-xl border border-border/60 bg-card space-y-1">
+                <span className="text-[11px] text-muted-foreground">System Health</span>
+                <p className="text-2xl font-bold font-serif text-primary">99.4%</p>
+                <span className="text-[10px] text-muted-foreground">AI Evaluation Operational</span>
+              </div>
+            </div>
+
+            {/* Student Roster Table */}
+            <div className="rounded-xl border border-border/70 bg-card p-5 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <h3 className="text-sm font-semibold text-foreground">Student Cohort Management</h3>
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Search student or email..."
+                    value={adminSearchQuery}
+                    onChange={(e) => setAdminSearchQuery(e.target.value)}
+                    className="pl-8 text-xs h-8"
+                  />
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="border-b border-border/60 text-muted-foreground bg-muted/20">
+                    <tr>
+                      <th className="py-2.5 px-3 font-medium">Student Name</th>
+                      <th className="py-2.5 px-3 font-medium">Institution</th>
+                      <th className="py-2.5 px-3 font-medium">Level</th>
+                      <th className="py-2.5 px-3 font-medium">Simulations</th>
+                      <th className="py-2.5 px-3 font-medium">Avg Score</th>
+                      <th className="py-2.5 px-3 font-medium text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/40 text-foreground">
+                    <tr>
+                      <td className="py-3 px-3 font-semibold">Alex Morgan</td>
+                      <td className="py-3 px-3 text-muted-foreground">Commonwealth Law School</td>
+                      <td className="py-3 px-3"><Badge variant="outline" className="text-[10px]">Level 3</Badge></td>
+                      <td className="py-3 px-3">12</td>
+                      <td className="py-3 px-3 font-semibold text-primary">74%</td>
+                      <td className="py-3 px-3 text-right">
+                        <Button variant="ghost" size="sm" onClick={() => toast.info('Viewing Alex Morgan dossier')} className="h-7 text-xs">
+                          Inspect
+                        </Button>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="py-3 px-3 font-semibold">Sarah Jenkins</td>
+                      <td className="py-3 px-3 text-muted-foreground">King&apos;s College London</td>
+                      <td className="py-3 px-3"><Badge variant="outline" className="text-[10px]">Level 4</Badge></td>
+                      <td className="py-3 px-3">19</td>
+                      <td className="py-3 px-3 font-semibold text-primary">88%</td>
+                      <td className="py-3 px-3 text-right">
+                        <Button variant="ghost" size="sm" onClick={() => toast.info('Viewing Sarah Jenkins dossier')} className="h-7 text-xs">
+                          Inspect
+                        </Button>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="py-3 px-3 font-semibold">David Chen</td>
+                      <td className="py-3 px-3 text-muted-foreground">Oxford Faculty of Law</td>
+                      <td className="py-3 px-3"><Badge variant="outline" className="text-[10px]">Level 2</Badge></td>
+                      <td className="py-3 px-3">7</td>
+                      <td className="py-3 px-3 font-semibold text-primary">69%</td>
+                      <td className="py-3 px-3 text-right">
+                        <Button variant="ghost" size="sm" onClick={() => toast.info('Viewing David Chen dossier')} className="h-7 text-xs">
+                          Inspect
+                        </Button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        )}
+
+      </main>
     </div>
   );
 }

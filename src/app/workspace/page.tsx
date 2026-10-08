@@ -3,63 +3,107 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import {
-  BookOpen, Search, Sparkles, Send, FileText, CheckCircle2,
-  ExternalLink, Copy, Bookmark, ShieldCheck, Database,
-  UploadCloud, RefreshCw, Scale, ChevronRight, Layers
+  BookOpen,
+  Search,
+  Sparkles,
+  Send,
+  FileText,
+  CheckCircle2,
+  ExternalLink,
+  Copy,
+  Bookmark,
+  ShieldCheck,
+  Layers,
+  ArrowRight,
+  Filter,
+  Save,
+  Trash2,
+  Clock,
+  ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { mockDocuments } from '@/data/mock-data';
 import { researchService } from '@/services';
 import { toast } from 'sonner';
 
 export default function WorkspacePage() {
+  const [activeTab, setActiveTab] = useState<'library' | 'research' | 'materials'>('library');
   const [selectedDoc, setSelectedDoc] = useState(mockDocuments[0]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [chatMessages, setChatMessages] = useState<any[]>([
+  const [selectedDomainFilter, setSelectedDomainFilter] = useState('all');
+
+  // Research State
+  const [researchQuery, setResearchQuery] = useState('');
+  const [isQuerying, setIsQuerying] = useState(false);
+  const [researchResults, setResearchResults] = useState<any[]>([
     {
-      id: 'msg-init',
-      role: 'assistant',
-      content: 'Welcome to the Courtly Legal Research Workspace. I can assist you in analyzing statutory provisions under the Sale of Goods Act 1979, formulating arguments on contractual breach, or extracting precedents for your virtual courtroom simulations.',
-      timestamp: 'Just now',
+      id: 'res-1',
+      question: 'What are the implied terms of satisfactory quality and fitness for purpose under English commercial law?',
+      answer:
+        'Under Section 14(2) of the Sale of Goods Act 1979 (as amended), where a seller sells goods in the course of a business, there is an implied term that the goods supplied under the contract are of satisfactory quality. Furthermore, under Section 14(3), where the buyer makes known any particular purpose for which the goods are being bought, there is an implied condition that the goods are reasonably fit for that purpose, regardless of whether that is a purpose for which such goods are commonly supplied.',
       citations: [
         {
-          title: 'Sale of Goods Act 1979, s 14(2)',
+          title: 'Sale of Goods Act 1979, s 14(2)–(3)',
           citationString: 'UK Public General Acts 1979 c. 54',
           relevanceScore: 0.98,
         },
+        {
+          title: 'Hadley v Baxendale [1854] EWHC J70',
+          citationString: '(1854) 9 Exch 341',
+          relevanceScore: 0.91,
+        },
       ],
+      timestamp: '2026-03-08 14:20',
     },
   ]);
-  const [chatInput, setChatInput] = useState('');
-  const [isQuerying, setIsQuerying] = useState(false);
-  const [isIngesting, setIsIngesting] = useState(false);
 
-  const filteredDocs = mockDocuments.filter((doc) =>
-    doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (doc.summary || '').toLowerCase().includes(searchQuery.toLowerCase())
+  // My Materials State
+  const [caseNotes, setCaseNotes] = useState(
+    'Henderson v Caldwell Trading Ltd — Strategic Notes:\n\n1. Establish that the CNC precision lathe was purchased specifically for aerospace alloy tolerance work (not standard tooling).\n2. Cross-examine Witness Marcus Vance on email dated 14 May confirming delivery specs.\n3. Rebut claim of contributory modification by citing ISO calibration certificates (Exhibit C-3).'
   );
+  const [bookmarks, setBookmarks] = useState<string[]>([
+    'Sale of Goods Act 1979, s 14',
+    'Civil Procedure Rules CPR Part 32',
+    'Hadley v Baxendale [1854]',
+  ]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
+  const filteredDocs = mockDocuments.filter((doc) => {
+    const matchesSearch =
+      doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (doc.summary || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (doc.citation || '').toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSearch;
+  });
+
+  const handleExecuteResearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chatInput.trim() || isQuerying) return;
+    if (!researchQuery.trim() || isQuerying) return;
 
-    const userMsg = {
-      id: `user-msg-${Date.now()}`,
-      role: 'user',
-      content: chatInput,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
-
-    setChatMessages((prev) => [...prev, userMsg]);
-    setChatInput('');
     setIsQuerying(true);
-
     try {
-      const response = await researchService.queryAssistant('sess-1', userMsg.content);
-      setChatMessages((prev) => [...prev, response]);
+      const response = await researchService.queryAssistant('sess-workspace', researchQuery);
+      setResearchResults((prev) => [
+        {
+          id: `res-${Date.now()}`,
+          question: researchQuery,
+          answer: response.content,
+          citations: response.citations || [
+            {
+              title: 'Sale of Goods Act 1979, s 14',
+              citationString: 'UK Public General Acts 1979 c. 54',
+              relevanceScore: 0.95,
+            },
+          ],
+          timestamp: 'Just now',
+        },
+        ...prev,
+      ]);
+      setResearchQuery('');
+      toast.success('Research query analyzed against Common Law corpus');
     } catch (e) {
       toast.error('Failed to query legal intelligence service');
     } finally {
@@ -67,217 +111,352 @@ export default function WorkspacePage() {
     }
   };
 
-  const handleSimulateIngestion = () => {
-    setIsIngesting(true);
-    toast.info('Ingesting moot brief into Courtly RAG vector store...');
-    setTimeout(() => {
-      setIsIngesting(false);
-      toast.success('Successfully extracted 14 chunks and indexed with zero citation conflicts!');
-    }, 1800);
+  const handleSaveNotes = () => {
+    toast.success('Case notes saved to your workspace profile');
+  };
+
+  const handleToggleBookmark = (title: string) => {
+    if (bookmarks.includes(title)) {
+      setBookmarks(bookmarks.filter((b) => b !== title));
+      toast.info(`Removed ${title} from saved materials`);
+    } else {
+      setBookmarks([...bookmarks, title]);
+      toast.success(`Bookmarked ${title}`);
+    }
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] bg-background text-foreground overflow-hidden">
+    <div className="min-h-screen bg-background text-foreground pb-20">
       
-      {/* ── TOP HEADER ── */}
-      <div className="p-3 sm:px-6 border-b border-border bg-card/60 backdrop-blur-md flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-            <BookOpen className="w-4 h-4" />
-          </div>
-          <div>
-            <h1 className="font-serif text-base font-bold text-foreground">Legal Research & Intelligence Workspace</h1>
-            <p className="text-[10px] text-muted-foreground">Common Law Statutory Corpus & Verified Precedents</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-[10px] text-emerald-600 dark:text-emerald-400 gap-1 hidden sm:inline-flex">
-            <ShieldCheck className="w-3 h-3" />
-            <span>Legislation.gov.uk Grounded</span>
-          </Badge>
-          <Button size="sm" onClick={handleSimulateIngestion} disabled={isIngesting} className="h-8 text-xs gap-1.5">
-            <UploadCloud className="w-3.5 h-3.5" />
-            <span>{isIngesting ? 'Indexing...' : 'Ingest Document'}</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* ── 3-PANE WORKSPACE LAYOUT ── */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        
-        {/* ── PANE 1: DOCUMENT BROWSER SIDEBAR (LEFT) ── */}
-        <div className="w-full md:w-72 lg:w-80 border-r border-border bg-card/40 flex flex-col overflow-hidden">
-          <div className="p-3 border-b border-border space-y-2">
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-muted-foreground" />
-              <Input
-                placeholder="Search statutes & cases..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-8 pl-8 text-xs"
-              />
+      {/* ── Sub-Header & Navigation Tabs ── */}
+      <div className="border-b border-border/40 bg-card/40 backdrop-blur-xs sticky top-16 z-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+              <BookOpen className="w-4 h-4" />
             </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            <span className="text-[10px] uppercase font-semibold text-muted-foreground px-2 py-1 block">
-              Statutory Instruments & Case Law
-            </span>
-            {filteredDocs.map((doc) => {
-              const isSelected = selectedDoc.id === doc.id;
-              return (
-                <button
-                  key={doc.id}
-                  type="button"
-                  onClick={() => setSelectedDoc(doc)}
-                  className={`w-full p-2.5 rounded-lg text-left transition-all text-xs space-y-1 ${
-                    isSelected
-                      ? 'bg-primary/10 text-primary font-semibold border border-primary/20'
-                      : 'hover:bg-muted/60 text-foreground'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <Badge variant={isSelected ? 'default' : 'outline'} className="text-[9px] capitalize">
-                      {doc.sourceType.replace('_', ' ')}
-                    </Badge>
-                    <span className="text-[10px] text-muted-foreground font-mono">{doc.year || 1979}</span>
-                  </div>
-                  <div className="line-clamp-1">{doc.title}</div>
-                  <p className="text-[10px] text-muted-foreground line-clamp-2 font-normal">
-                    {doc.summary}
-                  </p>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ── PANE 2: INTERACTIVE DOCUMENT READER (MIDDLE) ── */}
-        <div className="flex-1 flex flex-col overflow-hidden border-r border-border bg-background">
-          <div className="p-3 sm:px-6 border-b border-border flex items-center justify-between bg-muted/20">
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-xs text-foreground">{selectedDoc.title}</span>
-                <Badge variant="outline" className="text-[9px] font-mono">{selectedDoc.jurisdiction}</Badge>
-              </div>
-              <span className="text-[10px] text-muted-foreground">{selectedDoc.citation}</span>
-            </div>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                if (selectedDoc.citation) {
-                  navigator.clipboard.writeText(selectedDoc.citation);
-                  toast.success('Legal citation copied to clipboard');
-                }
-              }}
-              className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
-            >
-              <Copy className="w-3.5 h-3.5" />
-              <span>Copy Citation</span>
-            </Button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-            <div className="p-3.5 rounded-xl bg-muted/40 border border-border/80 space-y-1">
-              <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">
-                Statutory Summary & Common Law Application
-              </span>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {selectedDoc.summary}
+            <div>
+              <h1 className="text-sm font-semibold text-foreground">Legal Research & Materials Workspace</h1>
+              <p className="text-[11px] text-muted-foreground">
+                Common Law Statutory Corpus, Precedent Retrieval & Case Dossier Preparation
               </p>
             </div>
-
-            <div className="p-5 rounded-xl border border-border bg-card font-serif text-xs leading-relaxed text-foreground space-y-3 shadow-inner">
-              <div className="font-sans text-xs font-semibold text-primary border-b border-border/60 pb-2 flex items-center justify-between">
-                <span>Verbatim Text / Judicial Extract</span>
-                <span className="font-mono text-[10px] text-muted-foreground">{selectedDoc.citation}</span>
-              </div>
-              <div className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed bg-muted/20 p-3 rounded-lg border border-border/40">
-                {selectedDoc.fullText}
-              </div>
-            </div>
-
-            {/* Citations & Precedent Cross References */}
-            <div className="p-4 rounded-xl border border-border bg-card space-y-2">
-              <span className="text-xs font-semibold text-foreground">Cross-Referenced in Case Files:</span>
-              <div className="flex flex-wrap gap-2">
-                <Link href="/courtroom">
-                  <Badge variant="outline" className="text-xs py-1 px-2.5 gap-1 hover:border-primary cursor-pointer">
-                    <Scale className="w-3 h-3 text-primary" />
-                    <span>Henderson v Caldwell Trading Ltd</span>
-                  </Badge>
-                </Link>
-                <Badge variant="outline" className="text-xs py-1 px-2.5 gap-1">
-                  <Scale className="w-3 h-3 text-primary" />
-                  <span>Re: Oakwood Partners LLP</span>
-                </Badge>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ── PANE 3: AI RESEARCH ASSISTANT (RIGHT) ── */}
-        <div className="w-full md:w-80 lg:w-96 flex flex-col bg-card/50 overflow-hidden">
-          <div className="p-3 border-b border-border flex items-center gap-2 bg-muted/30">
-            <Sparkles className="w-4 h-4 text-primary" />
-            <span className="text-xs font-semibold text-foreground">AI Legal Research Assistant</span>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3 space-y-3 text-xs">
-            {chatMessages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`p-3 rounded-xl border space-y-1.5 ${
-                  msg.role === 'assistant'
-                    ? 'border-primary/20 bg-primary/5'
-                    : 'border-border bg-card'
-                }`}
-              >
-                <div className="flex items-center justify-between text-[10px]">
-                  <span className="font-bold text-foreground capitalize">{msg.role}</span>
-                  <span className="text-muted-foreground">{msg.timestamp}</span>
-                </div>
-                <p className="text-muted-foreground leading-relaxed text-[11px]">
-                  {msg.content}
-                </p>
-
-                {msg.citations && msg.citations.length > 0 && (
-                  <div className="pt-2 border-t border-border/50 space-y-1">
-                    <span className="text-[9px] font-semibold text-primary uppercase">Authority:</span>
-                    {msg.citations.map((c: any, i: number) => (
-                      <div key={i} className="text-[10px] font-mono text-muted-foreground flex items-center justify-between">
-                        <span>{c.title}</span>
-                        <span className="text-emerald-500 font-bold">{Math.round((c.relevanceScore || 0.95) * 100)}% Match</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-            {isQuerying && (
-              <div className="p-3 rounded-xl border border-primary/20 bg-primary/5 text-xs text-primary flex items-center gap-2 animate-pulse">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Synthesizing Common Law authorities...</span>
-              </div>
-            )}
-          </div>
-
-          <form onSubmit={handleSendMessage} className="p-3 border-t border-border bg-card flex items-center gap-2">
-            <Input
-              placeholder="Ask a legal research question..."
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              className="h-9 text-xs"
-            />
-            <Button type="submit" size="icon" disabled={isQuerying || !chatInput.trim()} className="h-9 w-9 text-primary-foreground">
-              <Send className="w-3.5 h-3.5" />
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant={activeTab === 'library' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveTab('library')}
+              className="text-xs h-8 px-3 font-medium"
+            >
+              <BookOpen className="w-3.5 h-3.5 mr-1.5" />
+              Legal Library
             </Button>
-          </form>
+            <Button
+              variant={activeTab === 'research' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveTab('research')}
+              className="text-xs h-8 px-3 font-medium"
+            >
+              <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+              Legal Research
+            </Button>
+            <Button
+              variant={activeTab === 'materials' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveTab('materials')}
+              className="text-xs h-8 px-3 font-medium"
+            >
+              <FileText className="w-3.5 h-3.5 mr-1.5" />
+              My Materials
+            </Button>
+          </div>
+
         </div>
       </div>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        
+        {/* ══════════════════════════════════════════════════════════
+            TAB 1: LEGAL LIBRARY
+           ══════════════════════════════════════════════════════════ */}
+        {activeTab === 'library' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* Left Sidebar: Document List */}
+            <div className="lg:col-span-1 space-y-3">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-muted-foreground" />
+                <Input
+                  placeholder="Search statutory acts & precedents..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8 text-xs h-9"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-1">
+                  Primary Authorities ({filteredDocs.length})
+                </span>
+
+                <div className="space-y-2 max-h-[calc(100vh-16rem)] overflow-y-auto pr-1">
+                  {filteredDocs.map((doc) => {
+                    const isSelected = selectedDoc.id === doc.id;
+                    return (
+                      <button
+                        key={doc.id}
+                        type="button"
+                        onClick={() => setSelectedDoc(doc)}
+                        className={`w-full p-3 rounded-xl border text-left transition-all text-xs space-y-1.5 ${
+                          isSelected
+                            ? 'border-primary bg-primary/5 shadow-xs'
+                            : 'border-border/60 bg-card hover:border-border hover:bg-muted/30'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <Badge variant={isSelected ? 'default' : 'outline'} className="text-[9px] capitalize">
+                            {doc.sourceType.replace('_', ' ')}
+                          </Badge>
+                          <span className="text-[10px] text-muted-foreground font-mono">{doc.jurisdiction}</span>
+                        </div>
+                        <p className="font-semibold text-foreground line-clamp-1">{doc.title}</p>
+                        <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
+                          {doc.summary}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Full Document Viewer */}
+            <div className="lg:col-span-2 rounded-2xl border border-border/80 bg-card p-6 sm:p-8 space-y-6">
+              
+              {/* Document Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/40">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-[10px] font-mono">{selectedDoc.jurisdiction}</Badge>
+                    <span className="text-xs text-muted-foreground font-mono">{selectedDoc.citation}</span>
+                  </div>
+                  <h2 className="font-serif text-xl sm:text-2xl font-bold text-foreground">
+                    {selectedDoc.title}
+                  </h2>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (selectedDoc.citation) {
+                        navigator.clipboard.writeText(selectedDoc.citation);
+                        toast.success('Citation copied to clipboard');
+                      }
+                    }}
+                    className="text-xs h-8"
+                  >
+                    <Copy className="w-3.5 h-3.5 mr-1.5" />
+                    Copy Citation
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleToggleBookmark(selectedDoc.title)}
+                    className="text-xs h-8"
+                  >
+                    <Bookmark
+                      className={`w-3.5 h-3.5 mr-1.5 ${
+                        bookmarks.includes(selectedDoc.title) ? 'fill-primary text-primary' : ''
+                      }`}
+                    />
+                    {bookmarks.includes(selectedDoc.title) ? 'Saved' : 'Bookmark'}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Document Content Body */}
+              <div className="prose prose-sm dark:prose-invert max-w-none text-xs sm:text-sm text-muted-foreground leading-relaxed space-y-4">
+                <div className="p-4 rounded-xl bg-muted/30 border border-border/40 space-y-1">
+                  <span className="text-[11px] font-semibold text-foreground uppercase tracking-wider">
+                    Executive Statutory Summary
+                  </span>
+                  <p className="text-xs text-muted-foreground">{selectedDoc.summary}</p>
+                </div>
+
+                <div className="space-y-3 pt-2">
+                  <h3 className="font-serif text-base font-semibold text-foreground">
+                    Text of Provisions & Commentary
+                  </h3>
+                  <p>
+                    {selectedDoc.content ||
+                      'Section 14(2): Where the seller sells goods in the course of a business, there is an implied term that the goods supplied under the contract are of satisfactory quality. Goods are of satisfactory quality if they meet the standard that a reasonable person would regard as satisfactory, taking account of any description of the goods, the price (if relevant) and all the other relevant circumstances.'}
+                  </p>
+                  <p>
+                    Section 14(3): Where the seller sells goods in the course of a business and the buyer, expressly or by implication, makes known to the seller any particular purpose for which the goods are being bought, there is an implied term that the goods supplied under the contract are reasonably fit for that purpose, whether or not that is a purpose for which such goods are commonly supplied.
+                  </p>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════
+            TAB 2: LEGAL RESEARCH
+           ══════════════════════════════════════════════════════════ */}
+        {activeTab === 'research' && (
+          <div className="max-w-4xl mx-auto space-y-6">
+            
+            {/* Research Question Input Card */}
+            <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 space-y-4 shadow-xs">
+              <div className="space-y-1">
+                <h2 className="text-sm font-semibold text-foreground">Source-Grounded Legal Research</h2>
+                <p className="text-xs text-muted-foreground">
+                  Pose questions regarding statutory interpretation, burden of proof, or evidentiary admissibility under English Common Law.
+                </p>
+              </div>
+
+              <form onSubmit={handleExecuteResearch} className="space-y-3">
+                <Textarea
+                  placeholder="e.g. Under what circumstances can a buyer reject goods for breach of s.14(2) without losing the right to claim consequential damages?"
+                  value={researchQuery}
+                  onChange={(e) => setResearchQuery(e.target.value)}
+                  rows={3}
+                  className="text-xs resize-none"
+                  required
+                />
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-muted-foreground">
+                    Verified against Common Law authorities & statutes
+                  </span>
+                  <Button type="submit" disabled={isQuerying} size="sm" className="text-xs font-semibold">
+                    <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                    {isQuerying ? 'Analyzing Precedents...' : 'Analyze Legal Issue'}
+                  </Button>
+                </div>
+              </form>
+            </div>
+
+            {/* Research Results Stream */}
+            <div className="space-y-4">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Research Inquiries & Grounded Answers
+              </span>
+
+              {researchResults.map((res) => (
+                <div
+                  key={res.id}
+                  className="p-5 sm:p-6 rounded-xl border border-border/70 bg-card space-y-4 shadow-xs"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <h3 className="text-xs sm:text-sm font-semibold text-foreground flex items-start gap-2">
+                      <FileText className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                      <span>{res.question}</span>
+                    </h3>
+                    <span className="text-[10px] text-muted-foreground shrink-0">{res.timestamp}</span>
+                  </div>
+
+                  <div className="p-4 rounded-lg bg-muted/30 border border-border/40 text-xs text-muted-foreground leading-relaxed">
+                    {res.answer}
+                  </div>
+
+                  {/* Pinpoint Citations */}
+                  <div className="space-y-1.5 pt-1">
+                    <span className="text-[11px] font-semibold text-foreground">Primary Supporting Authorities:</span>
+                    <div className="flex flex-wrap gap-2">
+                      {res.citations.map((cit: any, i: number) => (
+                        <div
+                          key={i}
+                          className="px-2.5 py-1 rounded-md bg-muted text-[11px] text-foreground border border-border/50 flex items-center gap-1.5"
+                        >
+                          <ShieldCheck className="w-3 h-3 text-primary" />
+                          <span className="font-medium">{cit.title}</span>
+                          <span className="text-muted-foreground font-mono">({cit.citationString})</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════
+            TAB 3: MY MATERIALS
+           ══════════════════════════════════════════════════════════ */}
+        {activeTab === 'materials' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* Case Notes Editor */}
+            <div className="lg:col-span-2 rounded-2xl border border-border/80 bg-card p-6 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-border/40">
+                <div className="space-y-0.5">
+                  <h2 className="text-sm font-semibold text-foreground">Advocacy Notes & Case Outlines</h2>
+                  <p className="text-[11px] text-muted-foreground">Draft your examination outlines and opening arguments.</p>
+                </div>
+                <Button size="sm" onClick={handleSaveNotes} className="text-xs h-8">
+                  <Save className="w-3.5 h-3.5 mr-1.5" />
+                  Save Notes
+                </Button>
+              </div>
+
+              <Textarea
+                value={caseNotes}
+                onChange={(e) => setCaseNotes(e.target.value)}
+                rows={14}
+                className="text-xs font-mono leading-relaxed resize-none p-3.5"
+              />
+            </div>
+
+            {/* Saved Bookmarks & Pinned Citations */}
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-border/80 bg-card p-5 space-y-3">
+                <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                  Bookmarked Authorities ({bookmarks.length})
+                </h3>
+
+                <div className="space-y-2">
+                  {bookmarks.map((bm, i) => (
+                    <div
+                      key={i}
+                      className="p-3 rounded-lg border border-border/40 bg-muted/20 flex items-center justify-between text-xs"
+                    >
+                      <div className="space-y-0.5">
+                        <p className="font-medium text-foreground">{bm}</p>
+                        <span className="text-[10px] text-muted-foreground">England & Wales</span>
+                      </div>
+                      <button
+                        onClick={() => handleToggleBookmark(bm)}
+                        className="text-muted-foreground hover:text-destructive"
+                        title="Remove bookmark"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl border border-border/60 bg-muted/10 text-xs text-muted-foreground space-y-2">
+                <span className="font-semibold text-foreground">Active Case Context:</span>
+                <p>
+                  Notes and citations saved here are automatically available inside the Virtual Courtroom side drawer during live simulations.
+                </p>
+              </div>
+            </div>
+
+          </div>
+        )}
+
+      </main>
     </div>
   );
 }

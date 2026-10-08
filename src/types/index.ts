@@ -100,7 +100,7 @@ export interface User {
 }
 
 export interface StudentProfile extends User {
-  role: 'student' | 'educator';
+  role: 'student' | 'educator' | 'administrator' | 'guest';
   currentLevel: number; // 1 to 5
   levelTitle: string;
   degreeProgram?: string;
@@ -167,10 +167,12 @@ export interface Simulation {
   title: string;
   description: string;
   legalDomain: LegalDomain;
+  domain?: string;
   jurisdiction: Jurisdiction;
   difficulty: DifficultyLevel;
   targetLevel?: number;
   estimatedDuration: number;
+  estimatedDurationMinutes?: number;
   availableRoles: string[];
   learningObjectives: string[];
   proceedingType: string;
@@ -378,6 +380,7 @@ export interface LegalDocument {
   summary?: string;
   citation?: string;
   fullText?: string;
+  content?: string;
 }
 
 export interface LegalCitation {
@@ -437,6 +440,7 @@ export interface PerformanceReport {
   id: string;
   sessionId: string;
   simulationTitle?: string;
+  domain?: string;
   overallScore: number;
   durationMinutes?: number;
   judicialFeedback?: string;
@@ -446,6 +450,8 @@ export interface PerformanceReport {
   skillScores?: SkillScore[];
   strengths: string[];
   improvements: string[];
+  strengthsSummary?: string;
+  areasForImprovementSummary?: string;
   missedOpportunities?: string[];
   proceduralMistakes?: string[];
   strongArguments?: string[];

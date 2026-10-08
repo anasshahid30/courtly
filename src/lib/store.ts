@@ -43,8 +43,8 @@ interface AppState {
 
   // Modals & Sheets
   isAuthModalOpen: boolean;
-  authModalMode: 'login' | 'register';
-  openAuthModal: (mode?: 'login' | 'register') => void;
+  authModalMode: 'login' | 'register' | 'admin';
+  openAuthModal: (mode?: 'login' | 'register' | 'admin') => void;
   closeAuthModal: () => void;
 
   isOnboardingOpen: boolean;
