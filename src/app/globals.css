@@ -1,26 +1,232 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Courtly Brand Colors */
+  --courtly-deep-navy: 20 35 45;
+  --courtly-midnight: 16 28 37;
+  --courtly-warm-ivory: 247 245 240;
+  --courtly-gold: 199 169 121;
+  --courtly-slate: 102 117 128;
+  --courtly-border: 229 232 232;
+  
+  /* Semantic */
+  --courtly-success: 35 122 87;
+  --courtly-warning: 183 128 50;
+  --courtly-error: 185 75 75;
+  --courtly-info: 53 108 145;
+
+  /* shadcn/ui tokens mapped to Courtly */
+  --background: 0 0% 100%;
+  --foreground: 210 30% 12%;
+  --card: 40 20% 97%;
+  --card-foreground: 210 30% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 210 30% 12%;
+  --primary: 204 40% 17%;
+  --primary-foreground: 40 20% 97%;
+  --secondary: 40 15% 95%;
+  --secondary-foreground: 210 30% 12%;
+  --muted: 40 10% 94%;
+  --muted-foreground: 200 10% 45%;
+  --accent: 37 36% 63%;
+  --accent-foreground: 210 30% 12%;
+  --destructive: 0 45% 51%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 180 5% 91%;
+  --input: 180 5% 91%;
+  --ring: 204 40% 17%;
+  --radius: 0.625rem;
+  
+  --chart-1: 204 40% 17%;
+  --chart-2: 37 36% 63%;
+  --chart-3: 155 55% 31%;
+  --chart-4: 200 45% 39%;
+  --chart-5: 38 57% 46%;
+
+  --sidebar-background: 0 0% 100%;
+  --sidebar-foreground: 210 30% 12%;
+  --sidebar-primary: 204 40% 17%;
+  --sidebar-primary-foreground: 40 20% 97%;
+  --sidebar-accent: 40 15% 95%;
+  --sidebar-accent-foreground: 210 30% 12%;
+  --sidebar-border: 180 5% 91%;
+  --sidebar-ring: 204 40% 17%;
+}
+
+.dark {
+  --background: 210 35% 10%;
+  --foreground: 40 15% 92%;
+  --card: 210 32% 13%;
+  --card-foreground: 40 15% 92%;
+  --popover: 210 35% 11%;
+  --popover-foreground: 40 15% 92%;
+  --primary: 37 36% 63%;
+  --primary-foreground: 210 35% 10%;
+  --secondary: 210 25% 17%;
+  --secondary-foreground: 40 15% 92%;
+  --muted: 210 25% 17%;
+  --muted-foreground: 200 10% 55%;
+  --accent: 37 36% 63%;
+  --accent-foreground: 40 15% 92%;
+  --destructive: 0 45% 51%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 210 20% 20%;
+  --input: 210 20% 20%;
+  --ring: 37 36% 63%;
+
+  --chart-1: 37 36% 63%;
+  --chart-2: 155 55% 40%;
+  --chart-3: 200 45% 50%;
+  --chart-4: 38 57% 55%;
+  --chart-5: 0 45% 55%;
+
+  --sidebar-background: 210 35% 10%;
+  --sidebar-foreground: 40 15% 92%;
+  --sidebar-primary: 37 36% 63%;
+  --sidebar-primary-foreground: 210 35% 10%;
+  --sidebar-accent: 210 25% 17%;
+  --sidebar-accent-foreground: 40 15% 92%;
+  --sidebar-border: 210 20% 20%;
+  --sidebar-ring: 37 36% 63%;
+}
+
+/* Courtly Courtroom Theme */
+.courtroom-theme {
+  --background: 210 38% 8%;
+  --foreground: 40 15% 92%;
+  --card: 210 35% 11%;
+  --card-foreground: 40 15% 92%;
+  --popover: 210 35% 10%;
+  --popover-foreground: 40 15% 92%;
+  --primary: 37 36% 63%;
+  --primary-foreground: 210 38% 8%;
+  --secondary: 210 28% 15%;
+  --secondary-foreground: 40 15% 92%;
+  --muted: 210 28% 15%;
+  --muted-foreground: 200 10% 50%;
+  --accent: 37 36% 63%;
+  --accent-foreground: 40 15% 92%;
+  --border: 210 22% 18%;
+  --input: 210 22% 18%;
+  --ring: 37 36% 63%;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+  --color-sidebar-background: hsl(var(--sidebar-background));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Courtly brand tokens */
+  --color-courtly-navy: rgb(var(--courtly-deep-navy));
+  --color-courtly-midnight: rgb(var(--courtly-midnight));
+  --color-courtly-ivory: rgb(var(--courtly-warm-ivory));
+  --color-courtly-gold: rgb(var(--courtly-gold));
+  --color-courtly-slate: rgb(var(--courtly-slate));
+  --color-courtly-success: rgb(var(--courtly-success));
+  --color-courtly-warning: rgb(var(--courtly-warning));
+  --color-courtly-error: rgb(var(--courtly-error));
+  --color-courtly-info: rgb(var(--courtly-info));
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.2);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.35);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes accordion-down {
+  from { height: 0; }
+  to { height: var(--radix-accordion-content-height); }
+}
+
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to { height: 0; }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+@keyframes speaking-wave {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1); }
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-speaking-wave {
+  animation: speaking-wave 0.8s ease-in-out infinite;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
