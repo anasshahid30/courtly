@@ -3,6 +3,11 @@ import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { AuthModal } from "@/components/auth/AuthModal";
+import { OnboardingModal } from "@/components/auth/OnboardingModal";
+import { TransferSessionModal } from "@/components/auth/TransferSessionModal";
+import { EvidenceViewerModal } from "@/components/legal/EvidenceViewerModal";
+import { CaseFileModal } from "@/components/legal/CaseFileModal";
 import { Toaster } from "sonner";
 
 const geistSans = Geist({
@@ -39,6 +44,14 @@ export default function RootLayout({
         <Navbar />
         <div className="flex-1 flex flex-col">{children}</div>
         <Footer />
+        
+        {/* Global Modals & Notifications */}
+        <AuthModal />
+        <OnboardingModal />
+        <TransferSessionModal />
+        <EvidenceViewerModal />
+        <CaseFileModal />
+        
         <Toaster position="top-right" richColors />
       </body>
     </html>

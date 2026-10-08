@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAppStore } from '@/lib/store';
 import {
   Dialog,
@@ -28,6 +29,7 @@ import {
 import { toast } from 'sonner';
 
 export function AuthModal() {
+  const router = useRouter();
   const {
     isAuthModalOpen,
     authModalMode,
@@ -164,6 +166,7 @@ export function AuthModal() {
       }
 
       closeAuthModal();
+      router.push('/dashboard');
 
       if (activeTab === 'register') {
         setTimeout(() => {
