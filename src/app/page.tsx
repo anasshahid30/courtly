@@ -160,10 +160,10 @@ export default function HomePage() {
               
               {/* Mockup Header Bar */}
               <div className="h-10 bg-muted/60 border-b border-border/60 px-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-muted-foreground/30" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-muted-foreground/30" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-muted-foreground/30" />
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E]/60 shadow-2xs" />
+                  <div className="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123]/60 shadow-2xs" />
+                  <div className="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29]/60 shadow-2xs" />
                   <span className="ml-2 text-[11px] font-medium text-muted-foreground">
                     Henderson v Caldwell Trading Ltd — Queen&apos;s Bench Division
                   </span>
