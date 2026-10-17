@@ -150,7 +150,7 @@ export function Navbar() {
                       <p className="text-xs font-semibold text-foreground truncate">{currentUser.fullName}</p>
                       <p className="text-[11px] text-muted-foreground truncate">{currentUser.email}</p>
                       <span className="inline-block mt-1 text-[10px] font-medium text-primary uppercase tracking-wider">
-                        {currentUser.role === 'administrator' ? 'Administrator' : currentUser.levelTitle || 'Student Advocate'}
+                        {currentUser.role === 'administrator' ? 'Administrator' : currentUser.levelTitle || 'Not available yet'}
                       </span>
                     </div>
                   </DropdownMenuLabel>

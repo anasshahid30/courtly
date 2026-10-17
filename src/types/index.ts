@@ -93,16 +93,16 @@ export interface User {
   fullName: string;
   role: UserRole;
   avatarUrl?: string;
-  status: AccountStatus;
+  status?: AccountStatus | null;
   institution?: string;
-  createdAt: string;
-  lastActiveAt: string;
+  createdAt?: string | null;
+  lastActiveAt?: string | null;
 }
 
 export interface StudentProfile extends User {
   role: 'student' | 'educator' | 'administrator' | 'guest';
-  currentLevel: number; // 1 to 5
-  levelTitle: string;
+  currentLevel?: number | null; // 1 to 5
+  levelTitle?: string | null;
   degreeProgram?: string;
   studyLevel?: string;
   preferredJurisdiction?: string;
@@ -110,10 +110,10 @@ export interface StudentProfile extends User {
   legalInterests: string[];
   previousExperience?: string;
   learningGoals: string[];
-  completedSimulations: number;
-  totalPracticeHours: number;
-  averageScore: number;
-  currentStreak: number;
+  completedSimulations?: number | null;
+  totalPracticeHours?: number | null;
+  averageScore?: number | null;
+  currentStreak?: number | null;
   achievements?: Achievement[];
   certificates?: CertificateRecord[];
 }
@@ -206,7 +206,7 @@ export interface SimulationSession {
   endedAt?: string;
   currentStage?: ProceedingStage;
   performanceReport?: PerformanceReport;
-  configuration?: any;
+  configuration?: Record<string, unknown>;
 }
 
 export interface CourtroomParticipant {
@@ -256,7 +256,7 @@ export interface JudicialRuling {
   id: string;
   objectionId?: string;
   type?: string;
-  ruling: 'sustained' | 'overruled';
+  ruling: 'pending' | 'sustained' | 'overruled';
   reasoning: string;
   admissibilityImpact?: string;
   scoreImpact: number;

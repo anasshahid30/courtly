@@ -1,2 +1,4 @@
 courtly.db
 *.db
+.env
+!.env.example

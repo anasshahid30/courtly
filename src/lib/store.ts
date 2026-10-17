@@ -147,7 +147,7 @@ export const useAppStore = create<AppState>()(
           set((state) => ({
             currentUser: {
               ...state.currentUser,
-              completedSimulations: state.currentUser.completedSimulations + 1,
+              completedSimulations: (state.currentUser.completedSimulations ?? 0) + 1,
             },
             guestSession: null,
             guestPerformance: null,

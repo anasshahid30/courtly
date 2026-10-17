@@ -27,6 +27,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { authService } from '@/services';
 
 export function AuthModal() {
   const router = useRouter();
@@ -54,14 +55,22 @@ export function AuthModal() {
 
   useEffect(() => {
     if (authModalMode) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab(authModalMode);
       setIsForgotView(false);
-      if (authModalMode === 'login') {
-        setEmail('alex.morgan@lawschool.edu');
-        setPassword('password123');
-      } else if (authModalMode === 'admin') {
-        setEmail('admin@courtly.law');
-        setPassword('adminpass123');
+      if (process.env.NEXT_PUBLIC_USE_MOCKS !== 'false') {
+        if (authModalMode === 'login') {
+          setEmail('alex.morgan@lawschool.edu');
+          setPassword('password123');
+        } else if (authModalMode === 'admin') {
+          setEmail('admin@courtly.law');
+          setPassword('adminpass123');
+        } else {
+          setEmail('');
+          setPassword('');
+          setConfirmPassword('');
+          setFullName('');
+        }
       } else {
         setEmail('');
         setPassword('');
@@ -113,67 +122,44 @@ export function AuthModal() {
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      setIsLoading(false);
-      setAuthenticated(true);
+    (async () => {
+      try {
+        let user;
+        if (activeTab === 'register') {
+          await authService.register({
+            email,
+            fullName,
+            password,
+          });
+          user = await authService.login({ email, password });
+        } else {
+          user = await authService.login({ email, password });
+        }
 
-      if (activeTab === 'admin') {
-        setCurrentUser({
-          id: 'admin-1',
-          email,
-          fullName: 'Courtly System Administrator',
-          role: 'administrator',
-          currentLevel: 5,
-          levelTitle: 'Senior Administrator',
-          status: 'active',
-          institution: 'Courtly Academic Network',
-          legalInterests: ['Legal Pedagogy', 'AI Evaluation', 'Curriculum Management'],
-          learningGoals: [],
-          completedSimulations: 45,
-          totalPracticeHours: 120,
-          averageScore: 98,
-          currentStreak: 14,
-          createdAt: '2024-01-01T00:00:00Z',
-          lastActiveAt: new Date().toISOString(),
-        });
-        toast.success('Signed in as Administrator');
-      } else {
-        setCurrentUser({
-          id: `user-${Date.now()}`,
-          email,
-          fullName: fullName || 'Alex Morgan',
-          role: 'student',
-          currentLevel: 3,
-          levelTitle: 'Practicing Advocate',
-          status: 'active',
-          institution: institution || 'Commonwealth Law School',
-          degreeProgram: 'Bachelor of Laws (LLB)',
-          studyLevel: 'Third Year',
-          preferredJurisdiction: 'England & Wales',
-          preferredLanguage: 'English',
-          legalInterests: ['Commercial Law', 'Contract Law', 'Civil Litigation'],
-          learningGoals: ['Improve cross-examination', 'Master oral advocacy', 'Handle objections under pressure'],
-          completedSimulations: 12,
-          totalPracticeHours: 28.5,
-          averageScore: 74,
-          currentStreak: 5,
-          createdAt: new Date().toISOString(),
-          lastActiveAt: new Date().toISOString(),
-        });
-
+        setAuthenticated(true);
+        setCurrentUser(user);
         transferGuestDataToAccount();
-        toast.success(activeTab === 'register' ? 'Account created successfully!' : 'Signed in successfully!');
-      }
+        toast.success(
+          activeTab === 'register'
+            ? 'Account created successfully!'
+            : activeTab === 'admin'
+            ? 'Signed in as Administrator'
+            : 'Signed in successfully!'
+        );
+        closeAuthModal();
+        router.push('/dashboard');
 
-      closeAuthModal();
-      router.push('/dashboard');
-
-      if (activeTab === 'register') {
-        setTimeout(() => {
-          openOnboarding();
-        }, 300);
+        if (activeTab === 'register') {
+          setTimeout(() => {
+            openOnboarding();
+          }, 300);
+        }
+      } catch (err: unknown) {
+        toast.error(err instanceof Error ? err.message : 'Authentication failed');
+      } finally {
+        setIsLoading(false);
       }
-    }, 500);
+    })();
   };
 
   const handleForgotPassword = (e: React.FormEvent) => {
@@ -447,25 +433,27 @@ export function AuthModal() {
             </Button>
 
             {/* Demo Quick Fills */}
-            <div className="pt-2 border-t border-border/40 flex items-center justify-between text-[11px] text-muted-foreground">
-              <span>Quick demo credentials:</span>
-              <div className="flex gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => handleFillDemo('student')}
-                  className="px-2 py-0.5 rounded bg-muted hover:bg-muted/80 text-foreground font-medium transition-colors"
-                >
-                  Student Demo
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleFillDemo('admin')}
-                  className="px-2 py-0.5 rounded bg-muted hover:bg-muted/80 text-foreground font-medium transition-colors"
-                >
-                  Admin Demo
-                </button>
+            {process.env.NEXT_PUBLIC_USE_MOCKS !== 'false' && (
+              <div className="pt-2 border-t border-border/40 flex items-center justify-between text-[11px] text-muted-foreground">
+                <span>Quick demo credentials:</span>
+                <div className="flex gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleFillDemo('student')}
+                    className="px-2 py-0.5 rounded bg-muted hover:bg-muted/80 text-foreground font-medium transition-colors"
+                  >
+                    Student Demo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleFillDemo('admin')}
+                    className="px-2 py-0.5 rounded bg-muted hover:bg-muted/80 text-foreground font-medium transition-colors"
+                  >
+                    Admin Demo
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </form>
         )}
       </DialogContent>

@@ -5,17 +5,20 @@ import { useAppStore } from '@/lib/store';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, Lock, Sparkles, ChevronRight, Play } from 'lucide-react';
 import type { AdvocacyLevel } from '@/types';
+import type { BackendLevelProgressItem } from '@/services';
 
 interface LevelSelectorProps {
   selectedLevel: number;
   onSelectLevel: (levelNum: number) => void;
   compact?: boolean;
+  progressLevels?: BackendLevelProgressItem[];
 }
 
 export function LevelSelector({
   selectedLevel,
   onSelectLevel,
   compact = false,
+  progressLevels,
 }: LevelSelectorProps) {
   const { levels, currentLevel, isAuthenticated, isGuestMode } = useAppStore();
 
@@ -28,6 +31,9 @@ export function LevelSelector({
           const isOfficialCurrent = !isGuestMode && isAuthenticated && currentLevel === lvl.levelNumber;
           const isCompleted = !isGuestMode && isAuthenticated && lvl.levelNumber < currentLevel;
           const isLocked = !isGuestMode && isAuthenticated && lvl.levelNumber > currentLevel + 1;
+          const progress = progressLevels?.find(
+            (p) => p.level_number === lvl.levelNumber || p.level === lvl.levelNumber
+          );
 
           return (
             <button
@@ -50,7 +56,19 @@ export function LevelSelector({
                     Level {lvl.levelNumber}
                   </span>
 
-                  {isCompleted ? (
+                  {progress ? (
+                    <span
+                      className={`text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded border ${
+                        progress.status === 'PASSED'
+                          ? 'bg-primary/10 text-primary border-primary/30'
+                          : progress.status === 'IN_PROGRESS'
+                          ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+                          : 'bg-muted/80 text-muted-foreground border-border/60'
+                      }`}
+                    >
+                      {progress.status}
+                    </span>
+                  ) : isCompleted ? (
                     <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
                   ) : isOfficialCurrent ? (
                     <span className="text-[9px] font-semibold uppercase px-1.5 py-0.2 rounded bg-primary/10 text-primary border border-primary/20">
@@ -80,8 +98,27 @@ export function LevelSelector({
               {/* Progress or status bottom */}
               {!compact && !isGuestMode && isAuthenticated && (
                 <div className="mt-3 pt-2 border-t border-border/40 flex items-center justify-between text-[10px] text-muted-foreground">
-                  <span>Score min: {lvl.minPassingScore}%</span>
-                  {isCompleted ? (
+                  <span>
+                    Best score:{' '}
+                    <span className="font-semibold text-foreground">
+                      {progress
+                        ? (progress.best_score != null ? `${progress.best_score}%` : 'Not available yet')
+                        : (lvl.minPassingScore ? `Min: ${lvl.minPassingScore}%` : 'Not available yet')}
+                    </span>
+                  </span>
+                  {progress ? (
+                    <span
+                      className={`font-semibold uppercase text-[9px] ${
+                        progress.status === 'PASSED'
+                          ? 'text-primary'
+                          : progress.status === 'IN_PROGRESS'
+                          ? 'text-amber-500'
+                          : 'text-muted-foreground'
+                      }`}
+                    >
+                      {progress.status}
+                    </span>
+                  ) : isCompleted ? (
                     <span className="text-primary font-medium">Completed</span>
                   ) : isOfficialCurrent ? (
                     <span className="text-primary font-medium">{lvl.progressPercentage}%</span>

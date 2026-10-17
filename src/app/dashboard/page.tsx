@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -27,6 +27,7 @@ import {
   ChevronRight,
   AlertCircle,
   ExternalLink,
+  Loader2,
 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import { LevelSelector } from '@/components/legal/LevelSelector';
@@ -37,6 +38,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { mockSimulations, mockPerformanceReports } from '@/data/mock-data';
 import { toast } from 'sonner';
+import { performanceService, type BackendUserProgress } from '@/services';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -58,6 +60,43 @@ export default function DashboardPage() {
   );
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [adminSearchQuery, setAdminSearchQuery] = useState('');
+
+  const [progressData, setProgressData] = useState<BackendUserProgress | null>(null);
+  const [isLoadingProgress, setIsLoadingProgress] = useState<boolean>(true);
+  const [progressError, setProgressError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadProgress() {
+      if (!performanceService.getProgress) {
+        setIsLoadingProgress(false);
+        return;
+      }
+      setIsLoadingProgress(true);
+      setProgressError(null);
+      try {
+        const result = (await performanceService.getProgress()) as BackendUserProgress;
+        if (!isCancelled) {
+          setProgressData(result);
+        }
+      } catch (err: unknown) {
+        if (!isCancelled) {
+          setProgressError(err instanceof Error ? err.message : 'Failed to load progress data');
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoadingProgress(false);
+        }
+      }
+    }
+
+    loadProgress();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isAuthenticated]);
 
   const currentLevelObj = levels.find((l) => l.levelNumber === currentLevel) || levels[2];
   const selectedLevelObj = levels.find((l) => l.levelNumber === selectedPracticeLevel) || levels[0];
@@ -352,17 +391,25 @@ export default function DashboardPage() {
                         Welcome back, {currentUser?.fullName}
                       </h2>
                       <p className="text-xs text-muted-foreground">
-                        {currentUser?.institution} • {currentUser?.degreeProgram || 'LLB Law'}
+                        {(currentUser?.institution && currentUser?.degreeProgram)
+                          ? `${currentUser.institution} • ${currentUser.degreeProgram}`
+                          : (currentUser?.institution || currentUser?.degreeProgram || 'Not available yet')}
                       </p>
                     </div>
 
                     <div className="flex items-center gap-3 bg-muted/60 px-4 py-2.5 rounded-xl border border-border/60">
                       <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center font-serif text-sm font-bold text-primary">
-                        L{currentLevel}
+                        {currentUser?.currentLevel != null ? `L${currentUser.currentLevel}` : '—'}
                       </div>
                       <div>
-                        <p className="text-xs font-semibold text-foreground">{currentUser?.levelTitle}</p>
-                        <p className="text-[11px] text-muted-foreground">Level {currentLevel} of 5</p>
+                        <p className="text-xs font-semibold text-foreground">{currentUser?.levelTitle || 'Not available yet'}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {progressData?.overall?.levels_passed != null
+                            ? `${progressData.overall.levels_passed} of 5 levels passed`
+                            : currentUser?.currentLevel != null
+                            ? `Level ${currentUser.currentLevel} of 5`
+                            : 'Not available yet'}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -385,26 +432,30 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="p-4 rounded-xl border border-border/60 bg-card space-y-1">
                     <span className="text-[11px] text-muted-foreground">Simulations Completed</span>
-                    <p className="text-2xl font-bold font-serif text-foreground">{currentUser?.completedSimulations || 12}</p>
+                    <p className="text-2xl font-bold font-serif text-foreground">{currentUser?.completedSimulations != null ? currentUser.completedSimulations : 'Not available yet'}</p>
                     <span className="text-[10px] text-muted-foreground">Across 3 domains</span>
                   </div>
 
                   <div className="p-4 rounded-xl border border-border/60 bg-card space-y-1">
                     <span className="text-[11px] text-muted-foreground">Practice Hours</span>
-                    <p className="text-2xl font-bold font-serif text-foreground">{currentUser?.totalPracticeHours || 28.5}h</p>
+                    <p className="text-2xl font-bold font-serif text-foreground">{currentUser?.totalPracticeHours != null ? `${currentUser.totalPracticeHours}h` : 'Not available yet'}</p>
                     <span className="text-[10px] text-muted-foreground">Oral advocacy practice</span>
                   </div>
 
                   <div className="p-4 rounded-xl border border-border/60 bg-card space-y-1">
                     <span className="text-[11px] text-muted-foreground">Average Judicial Score</span>
-                    <p className="text-2xl font-bold font-serif text-primary">{currentUser?.averageScore || 74}%</p>
+                    <p className="text-2xl font-bold font-serif text-primary">{currentUser?.averageScore != null ? `${currentUser.averageScore}%` : 'Not available yet'}</p>
                     <span className="text-[10px] text-muted-foreground">+6% from last term</span>
                   </div>
 
                   <div className="p-4 rounded-xl border border-border/60 bg-card space-y-1">
                     <span className="text-[11px] text-muted-foreground">Current Level</span>
-                    <p className="text-2xl font-bold font-serif text-foreground">Level {currentLevel}</p>
-                    <span className="text-[10px] text-muted-foreground">{currentUser?.levelTitle}</span>
+                    <p className="text-2xl font-bold font-serif text-foreground">{currentUser?.currentLevel != null ? `Level ${currentUser.currentLevel}` : 'Not available yet'}</p>
+                    <span className="text-[10px] text-muted-foreground">
+                      {progressData?.overall?.levels_passed != null
+                        ? `${progressData.overall.levels_passed} levels passed`
+                        : (currentUser?.levelTitle || 'Not available yet')}
+                    </span>
                   </div>
                 </div>
 
@@ -417,10 +468,33 @@ export default function DashboardPage() {
                         Select your active practice tier to view curriculum simulations and assessment milestones.
                       </p>
                     </div>
+                    {progressData?.overall && (
+                      <Badge variant="outline" className="text-xs font-medium border-primary/30 text-primary bg-primary/5">
+                        Levels passed: {progressData.overall.levels_passed}
+                      </Badge>
+                    )}
                   </div>
+
+                  {/* Loading State */}
+                  {isLoadingProgress && (
+                    <div className="p-3 rounded-xl border border-border/60 bg-card/60 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                      <span>Loading progress data...</span>
+                    </div>
+                  )}
+
+                  {/* Error State */}
+                  {progressError && (
+                    <div className="p-3.5 rounded-xl border border-destructive/40 bg-destructive/10 text-destructive text-xs flex items-center gap-2.5">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>Failed to load progress: {progressError}</span>
+                    </div>
+                  )}
+
                   <LevelSelector
                     selectedLevel={selectedPracticeLevel}
                     onSelectLevel={(lvl) => setSelectedPracticeLevel(lvl)}
+                    progressLevels={progressData?.levels}
                   />
                 </div>
 
