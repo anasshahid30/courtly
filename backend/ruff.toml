@@ -1,0 +1,10 @@
+# Ruff configuration for Courtly backend (FastAPI)
+target-version = "py312"
+line-length = 100
+
+[lint]
+# B008: FastAPI uses Depends(...) in parameter defaults by design
+ignore = ["B008"]
+
+[lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.params.Depends", "fastapi.Query", "fastapi.Body"]

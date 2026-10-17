@@ -9,7 +9,7 @@ import {
 } from '@/data/mock-data';
 import type {
   AuthService, SimulationService, CourtroomService,
-  ResearchService, PerformanceService, NotificationService
+  ResearchService, PerformanceService, NotificationService, CertificateService
 } from '../interfaces';
 import type {
   StudentProfile, Simulation, SimulationSession, CaseFile,
@@ -53,7 +53,7 @@ export class MockAuthService implements AuthService {
     return getStorage<StudentProfile>(STORAGE_KEYS.USER, mockStudent);
   }
 
-  async login(email: string): Promise<StudentProfile> {
+  async login({ email }: { email: string; password?: string }): Promise<StudentProfile> {
     const user = { ...mockStudent, email };
     setStorage(STORAGE_KEYS.USER, user);
     return user;
@@ -127,8 +127,8 @@ export class MockCourtroomService implements CourtroomService {
       id: `sess-${Date.now()}`,
       simulationId: sim.id,
       userId: 'user-1',
-      userRole: (role as any) || 'plaintiff_counsel',
-      difficulty: (difficulty as any) || 'intermediate',
+      userRole: role || 'plaintiff_counsel',
+      difficulty: difficulty || 'intermediate',
       status: 'preparing',
       currentStageIndex: 0,
       currentSpeakerId: 'part-judge',
@@ -192,6 +192,39 @@ export class MockCourtroomService implements CourtroomService {
     reports.unshift(report);
     setStorage(STORAGE_KEYS.REPORTS, reports);
     return report;
+  }
+
+  async postTurn(sessionId: string, text: string): Promise<TranscriptEntry> {
+    return this.recordTranscript(sessionId, {
+      speakerName: 'Advocate',
+      speakerRole: 'learner',
+      text,
+    });
+  }
+
+  async getTranscript(sessionId: string): Promise<TranscriptEntry[]> {
+    const session = await this.getSession(sessionId);
+    return session?.transcript || [];
+  }
+
+  async advanceStage(sessionId: string): Promise<{ current_stage: number; stage: number }> {
+    const session = await this.getSession(sessionId);
+    const nextStage = Math.min(5, (session?.currentStageIndex || 0) + 1);
+    if (session) {
+      session.currentStageIndex = nextStage;
+      const sessions = getStorage<SimulationSession[]>(STORAGE_KEYS.SESSIONS, []);
+      const idx = sessions.findIndex(s => s.id === sessionId);
+      if (idx !== -1) {
+        sessions[idx].currentStageIndex = nextStage;
+        setStorage(STORAGE_KEYS.SESSIONS, sessions);
+      }
+    }
+    return { current_stage: nextStage, stage: nextStage };
+  }
+
+  async getReport(sessionId: string): Promise<PerformanceReport | null> {
+    const reports = getStorage<PerformanceReport[]>(STORAGE_KEYS.REPORTS, mockPerformanceReports);
+    return reports.find(r => r.sessionId === sessionId) || reports[0] || null;
   }
 }
 
@@ -312,6 +345,32 @@ export class MockPerformanceService implements PerformanceService {
       }
     };
   }
+
+  async getProgress() {
+    return {
+      levels: [
+        { level_number: 1, level: 1, status: 'PASSED', best_score: 88, attempts: 1 },
+        { level_number: 2, level: 2, status: 'PASSED', best_score: 91, attempts: 2 },
+        { level_number: 3, level: 3, status: 'IN_PROGRESS', best_score: 79, attempts: 1 },
+        { level_number: 4, level: 4, status: 'NOT_STARTED', best_score: null, attempts: 0 },
+        { level_number: 5, level: 5, status: 'NOT_STARTED', best_score: null, attempts: 0 },
+      ],
+      overall: {
+        levels_passed: 2,
+        certificate_eligible: false,
+      },
+    };
+  }
+
+  async getLevels() {
+    return [
+      { id: 1, number: 1, title: 'Level 1: Fundamentals of Advocacy', pass_threshold: 85, certificate_threshold: null, status: 'PASSED', best_score: 88, attempts: 1 },
+      { id: 2, number: 2, title: 'Level 2: Evidence & Cross-Examination', pass_threshold: 85, certificate_threshold: null, status: 'PASSED', best_score: 91, attempts: 2 },
+      { id: 3, number: 3, title: 'Level 3: Procedural Mastery', pass_threshold: 85, certificate_threshold: null, status: 'IN_PROGRESS', best_score: 79, attempts: 1 },
+      { id: 4, number: 4, title: 'Level 4: Appellate Advocacy', pass_threshold: 85, certificate_threshold: null, status: 'NOT_STARTED', best_score: null, attempts: 0 },
+      { id: 5, number: 5, title: 'Level 5: Advanced Commercial Court', pass_threshold: 85, certificate_threshold: 90, status: 'NOT_STARTED', best_score: null, attempts: 0 },
+    ];
+  }
 }
 
 // ── Notification Service ──
@@ -333,6 +392,45 @@ export class MockNotificationService implements NotificationService {
   }
 }
 
+// ── Certificate Service ──
+export class MockCertificateService implements CertificateService {
+  async claim() {
+    return {
+      id: 'cert-1',
+      title: 'Certificate of Advocacy Excellence',
+      levelNumber: 5,
+      jurisdiction: 'Commonwealth',
+      legalDomain: 'Commercial Advocacy',
+      status: 'issued' as const,
+      issueDate: new Date().toISOString(),
+      verificationId: 'MOCK-CERT-CODE-1234',
+      assessmentScore: 92.5,
+      accreditationNote: 'Issued by Courtly Virtual Courtroom',
+      verification_code: 'MOCK-CERT-CODE-1234',
+      score: 92.5,
+    };
+  }
+
+  async verify(code: string) {
+    return {
+      id: 'cert-1',
+      title: 'Verified Certificate of Advocacy Excellence',
+      levelNumber: 5,
+      jurisdiction: 'Commonwealth',
+      legalDomain: 'Commercial Advocacy',
+      status: 'issued' as const,
+      issueDate: new Date().toISOString(),
+      verificationId: code,
+      assessmentScore: 92.5,
+      accreditationNote: 'Formally verified credential in Courtly Registry',
+      recipient_name: 'Alex Morgan',
+      recipient_email: 'alex.morgan@law.edu',
+      verification_code: code,
+      score: 92.5,
+    };
+  }
+}
+
 // Service instances export
 export const authService = new MockAuthService();
 export const simulationService = new MockSimulationService();
@@ -340,3 +438,4 @@ export const courtroomService = new MockCourtroomService();
 export const researchService = new MockResearchService();
 export const performanceService = new MockPerformanceService();
 export const notificationService = new MockNotificationService();
+export const certificateService = new MockCertificateService();

@@ -1,0 +1,71 @@
+{
+  "slug": "contract_breach_demo",
+  "title": "Nova Systems v. Solis Logistics",
+  "jurisdiction": "Demo jurisdiction",
+  "domain_slug": "contract",
+  "level_number": 1,
+  "parties": [
+    {
+      "id": "party-1",
+      "name": "Nova Systems Ltd",
+      "role": "Claimant",
+      "counsel": "Claimant Counsel",
+      "description": "Commercial electronics manufacturer seeking damages for defective components and delayed delivery."
+    },
+    {
+      "id": "party-2",
+      "name": "Solis Logistics Corp",
+      "role": "Defendant",
+      "counsel": "Defendant Counsel",
+      "description": "Logistics and freight distribution carrier contesting liability based on force majeure and lack of timely notice."
+    }
+  ],
+  "agreed_facts": [
+    "On March 1, 2025, Nova Systems and Solis Logistics executed a Master Freight Agreement for commercial component deliveries.",
+    "The contract required Solis Logistics to deliver 5,000 optical sensors to Nova Systems' assembly facility in humidity-sealed containers by May 15, 2025.",
+    "Solis Logistics experienced logistical delays and delivered the consignment on June 2, 2025, eighteen days past the agreed deadline.",
+    "Upon arrival, 1,200 optical sensors were found to have suffered moisture ingress and failed quality assurance testing.",
+    "Nova Systems notified Solis Logistics of the damaged goods within forty-eight hours of delivery."
+  ],
+  "documents": [
+    {
+      "id": "doc-1",
+      "title": "Master Freight Agreement",
+      "date": "2025-03-01",
+      "description": "Commercial agreement establishing delivery timelines, temperature monitoring specifications, and claim notice procedures."
+    },
+    {
+      "id": "doc-2",
+      "title": "Bill of Lading and Delivery Confirmation",
+      "date": "2025-06-02",
+      "description": "Receiving report documenting moisture damage to outer cartons and serial numbers of affected sensor units."
+    },
+    {
+      "id": "doc-3",
+      "title": "Notice of Formal Claim",
+      "date": "2025-06-05",
+      "description": "Written notice issued by Nova Systems demanding replacement value and consequential business disruption costs."
+    }
+  ],
+  "witnesses": [
+    {
+      "id": "wit-1",
+      "name": "Elena Rostova",
+      "role": "Director of Procurement, Nova Systems Ltd",
+      "background": "Supervised component intake and conducted the post-delivery damage assessment.",
+      "statement_summary": "Testifies that prompt arrival of intact optical sensors was vital to production, and that container seals showed visible moisture upon opening."
+    },
+    {
+      "id": "wit-2",
+      "name": "Marcus Vance",
+      "role": "Head of Fleet Operations, Solis Logistics Corp",
+      "background": "Managed the transit schedule and carrier dispatch for shipment #SL-884.",
+      "statement_summary": "Testifies that transit delays were caused by severe regional weather conditions beyond reasonable control, and asserts cargo was handed over to warehouse staff without immediate objection."
+    }
+  ],
+  "legal_issues": [
+    "Whether the eighteen-day delivery delay constituted a material breach under the terms of the Master Freight Agreement.",
+    "Whether the carrier failed to maintain agreed environmental protections during transit resulting in cargo damage.",
+    "Whether the Claimant fulfilled its commercial duty to inspect and mitigate upon receipt of non-conforming goods."
+  ]
+}
