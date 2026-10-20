@@ -24,6 +24,7 @@ interface AppState {
   isTransferModalOpen: boolean;
   openTransferModal: () => void;
   closeTransferModal: () => void;
+  setGuestSession: (session: SimulationSession | null) => void;
 
   setCurrentUser: (user: StudentProfile) => void;
   setAuthenticated: (status: boolean) => void;
@@ -87,13 +88,14 @@ interface AppState {
   
   // Actions
   setActiveSimulation: (sim: Simulation | null) => void;
+  setActiveSession: (session: SimulationSession | null) => void;
   setSelectedRole: (role: string) => void;
   setSelectedDifficulty: (difficulty: string) => void;
   setVoiceMode: (isVoice: boolean) => void;
   setMicMuted: (isMuted: boolean) => void;
   setSpeechSynthesisEnabled: (enabled: boolean) => void;
   
-  startCourtroomSession: (simId?: string) => void;
+  startCourtroomSession: (simId?: string, sessionData?: SimulationSession | null) => void;
   pauseCourtroomSession: () => void;
   resumeCourtroomSession: () => void;
   advanceStage: () => void;
@@ -120,6 +122,7 @@ export const useAppStore = create<AppState>()(
       isTransferModalOpen: false,
       openTransferModal: () => set({ isTransferModalOpen: true }),
       closeTransferModal: () => set({ isTransferModalOpen: false }),
+      setGuestSession: (session) => set({ guestSession: session }),
 
       setCurrentUser: (user) => set({ currentUser: user, isAuthenticated: true, isGuestMode: false }),
       setAuthenticated: (status) => set({ isAuthenticated: status, isGuestMode: !status }),
@@ -229,18 +232,20 @@ export const useAppStore = create<AppState>()(
         const caseFile = sim ? mockCaseFiles.find((c) => c.simulationId === sim.id) || mockCaseFiles[0] : null;
         set({ activeSimulation: sim, activeCaseFile: caseFile });
       },
+      setActiveSession: (session) => set({ activeSession: session }),
       setSelectedRole: (role) => set({ selectedRole: role }),
       setSelectedDifficulty: (difficulty) => set({ selectedDifficulty: difficulty }),
       setVoiceMode: (isVoice) => set({ isVoiceMode: isVoice }),
       setMicMuted: (isMuted) => set({ isMicMuted: isMuted }),
       setSpeechSynthesisEnabled: (enabled) => set({ speechSynthesisEnabled: enabled }),
 
-      startCourtroomSession: (simId) => {
+      startCourtroomSession: (simId, sessionData) => {
         const sim = simId ? mockSimulations.find((s) => s.id === simId) || mockSimulations[0] : get().activeSimulation || mockSimulations[0];
         const caseFile = mockCaseFiles.find((c) => c.simulationId === sim.id) || mockCaseFiles[0];
         set({
           activeSimulation: sim,
           activeCaseFile: caseFile,
+          ...(sessionData ? { activeSession: sessionData } : {}),
           isCourtroomActive: true,
           isCourtroomPaused: false,
           courtroomStage: 0,

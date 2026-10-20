@@ -11,7 +11,7 @@ from app.core.trial import (
     advance_stage,
 )
 from app.db import get_db
-from app.deps import get_current_user
+from app.deps import get_current_user, get_verified_session
 from app.models import Objection, Turn, User
 from app.models import Session as SessionModel
 
@@ -66,18 +66,22 @@ class StageAdvanceOut(BaseModel):
 # Ownership Helper
 # ---------------------------------------------------------------------------
 
-def _get_owned_session(session_id: int, user_id: int, db: DbSession) -> SessionModel:
+def _get_owned_session(session_id: int, user_or_id: User | int, db: DbSession) -> SessionModel:
     """
-    Retrieves the session ensuring it belongs to the authenticated user.
-    Returns 404 if the session does not exist or belongs to another user.
+    Retrieves the session ensuring it belongs to the authenticated user and matches
+    the guest JWT session binding if the user is a guest.
+    Returns 404 if the session does not exist, belongs to another user, or fails binding.
     """
-    session = db.get(SessionModel, session_id)
-    if not session or session.user_id != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Session not found",
-        )
-    return session
+    if isinstance(user_or_id, int):
+        user = db.get(User, user_or_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Session not found",
+            )
+    else:
+        user = user_or_id
+    return get_verified_session(session_id, user, db)
 
 
 # ---------------------------------------------------------------------------
@@ -95,7 +99,7 @@ def add_turn(
     Records a learner dialogue turn at the session's current stage.
     Only permitted while the session is IN_PROGRESS.
     """
-    session = _get_owned_session(id, current_user.id, db)
+    session = _get_owned_session(id, current_user, db)
 
     if session.status != "IN_PROGRESS":
         raise HTTPException(
@@ -142,7 +146,7 @@ def get_transcript(
     """
     Returns the ordered courtroom trial transcript turns for the session.
     """
-    session = _get_owned_session(id, current_user.id, db)
+    session = _get_owned_session(id, current_user, db)
 
     turns = (
         db.query(Turn)
@@ -164,7 +168,7 @@ def raise_objection(
     Raises a formal evidentiary objection against a specific turn in this session.
     The objection ruling is created strictly as 'pending' with no automatic AI ruling.
     """
-    session = _get_owned_session(id, current_user.id, db)
+    session = _get_owned_session(id, current_user, db)
 
     # The objected turn must exist and belong to this session
     turn = db.get(Turn, data.turn_id)
@@ -214,7 +218,7 @@ def advance_session_stage(
     Advances the trial session to the next stage (0 to 5). Cannot exceed 5.
     Returns the new current_stage.
     """
-    session = _get_owned_session(id, current_user.id, db)
+    session = _get_owned_session(id, current_user, db)
 
     session.current_stage = advance_stage(session.current_stage)
     db.commit()

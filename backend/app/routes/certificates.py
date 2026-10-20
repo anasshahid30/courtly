@@ -9,6 +9,7 @@ from app.core.levels import (
     CERTIFICATE_THRESHOLD,
     FINAL_LEVEL,
 )
+from app.core.roles import ROLE_GUEST
 from app.db import get_db
 from app.deps import get_current_user
 from app.models import Certificate, LevelProgress, User
@@ -28,6 +29,11 @@ def claim_certificate(
     If any level is not PASSED, returns 403 listing the levels that are not yet passed.
     If all five are PASSED but the average is below 90, returns 403 with the actual average and the required 90.
     """
+    if current_user.role == ROLE_GUEST:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Guests are not eligible for certificate claims. Please register for an account.",
+        )
     # 1. Return existing certificate if already claimed
     existing_cert = (
         db.query(Certificate)

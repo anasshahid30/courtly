@@ -6,12 +6,13 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session as DbSession
 
 from app.core.levels import FINAL_LEVEL, certificate_eligible, initialize_user_progress
+from app.core.roles import ROLE_GUEST
 from app.core.scoring import (
     REQUIRED_CRITERIA,
     is_session_passed,
 )
 from app.db import get_db
-from app.deps import get_current_user
+from app.deps import get_current_user, get_verified_session
 from app.models import Appeal, Case, LevelProgress, SessionScore, User
 from app.models import Session as SessionModel
 
@@ -71,6 +72,11 @@ def create_session(
     Creates a new proceeding session for the authenticated user and marks the level IN_PROGRESS.
     The level must be UNLOCKED or IN_PROGRESS, otherwise returns 403.
     """
+    if current_user.role == ROLE_GUEST:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Guests cannot create unrestricted sessions. Use guest session initiation.",
+        )
     # Find the case
     case = (
         db.query(Case)
@@ -153,12 +159,7 @@ def get_session(
     """
     Returns session details. Only the session owner can view it; others get 404.
     """
-    session = db.get(SessionModel, id)
-    if not session or session.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Session not found",
-        )
+    session = get_verified_session(id, current_user, db)
 
     scores = db.query(SessionScore).filter(SessionScore.session_id == session.id).all()
 
@@ -195,12 +196,7 @@ def complete_session(
     commercial_acumen, unshakable_credibility, empathy_self_control,
     fact_nuance, evidence_handling. Missing or extra codes return 422.
     """
-    session = db.get(SessionModel, id)
-    if not session or session.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Session not found",
-        )
+    session = get_verified_session(id, current_user, db)
 
     if session.status == "COMPLETED":
         raise HTTPException(
@@ -326,12 +322,7 @@ def get_session_report(
     Only the session owner can view it; others get 404.
     If the session is not COMPLETED, returns 409 Conflict.
     """
-    session = db.get(SessionModel, id)
-    if not session or session.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Session not found",
-        )
+    session = get_verified_session(id, current_user, db)
 
     if session.status != "COMPLETED":
         raise HTTPException(
@@ -369,6 +360,12 @@ def get_my_progress(
     Returns the user's progress across all 5 levels with status, best score,
     and attempts, plus an overall block with levels passed count and certificate eligibility.
     """
+    if current_user.role == ROLE_GUEST:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Guests do not have a persistent learning progress profile.",
+        )
+
     progress_rows = initialize_user_progress(db, current_user.id)
     progress_by_level = {p.level_number: p for p in progress_rows}
 
@@ -435,12 +432,13 @@ def create_session_appeal(
     Only the session owner can appeal. Only for COMPLETED sessions.
     Only one open appeal per session; a second open appeal returns 409 Conflict.
     """
-    session = db.get(SessionModel, id)
-    if not session or session.user_id != current_user.id:
+    if current_user.role == ROLE_GUEST:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Session not found",
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Guests are not permitted to submit appeals.",
         )
+
+    session = get_verified_session(id, current_user, db)
 
     if session.status != "COMPLETED":
         raise HTTPException(

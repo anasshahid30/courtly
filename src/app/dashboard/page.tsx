@@ -38,7 +38,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { mockSimulations, mockPerformanceReports } from '@/data/mock-data';
 import { toast } from 'sonner';
-import { performanceService, type BackendUserProgress } from '@/services';
+import { performanceService, httpAuthService, authService, type BackendUserProgress } from '@/services';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -53,6 +53,10 @@ export default function DashboardPage() {
     openAuthModal,
     startCourtroomSession,
     setActiveSimulation,
+    setActiveSession,
+    setGuestSession,
+    selectedRole,
+    selectedDifficulty,
   } = useAppStore();
 
   const [selectedPracticeLevel, setSelectedPracticeLevel] = useState<number>(
@@ -64,6 +68,7 @@ export default function DashboardPage() {
   const [progressData, setProgressData] = useState<BackendUserProgress | null>(null);
   const [isLoadingProgress, setIsLoadingProgress] = useState<boolean>(true);
   const [progressError, setProgressError] = useState<string | null>(null);
+  const [isLaunching, setIsLaunching] = useState<boolean>(false);
 
   useEffect(() => {
     let isCancelled = false;
@@ -109,8 +114,49 @@ export default function DashboardPage() {
     return sim.difficulty === 'advanced';
   }).slice(0, 3);
 
-  const handleLaunchSimulation = (simId?: string) => {
+  const handleLaunchSimulation = async (simId?: string) => {
     const targetSim = mockSimulations.find((s) => s.id === simId) || mockSimulations[0];
+
+    // Guest mode / unauthenticated user: initiate secure backend guest session
+    if (isGuestMode || !isAuthenticated) {
+      setIsLaunching(true);
+      try {
+        // Map the Foundation simulation to real backend case slug 'contract_breach_demo'
+        const backendCaseSlug = 'contract_breach_demo';
+        const guestData = await (httpAuthService.createGuestSession
+          ? httpAuthService.createGuestSession(backendCaseSlug)
+          : authService.createGuestSession!(backendCaseSlug));
+
+        const sessionObj = {
+          id: String(guestData.session_id),
+          simulationId: targetSim.id,
+          simulation: targetSim,
+          userId: String(guestData.guest_id),
+          isGuestSession: true,
+          userRole: selectedRole || 'plaintiff_counsel',
+          difficulty: selectedDifficulty || 'beginner',
+          status: 'active' as const,
+          currentStageIndex: guestData.current_stage || 0,
+          transcript: [],
+          startedAt: new Date().toISOString(),
+        };
+
+        setActiveSession(sessionObj);
+        setGuestSession(sessionObj);
+        setActiveSimulation(targetSim);
+        startCourtroomSession(targetSim.id, sessionObj);
+
+        router.push('/courtroom');
+      } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : 'Failed to create guest courtroom session';
+        toast.error(errorMsg);
+      } finally {
+        setIsLaunching(false);
+      }
+      return;
+    }
+
+    // Registered user flow: preserve existing behaviour
     setActiveSimulation(targetSim);
     startCourtroomSession(targetSim.id);
     router.push('/courtroom');
@@ -232,10 +278,20 @@ export default function DashboardPage() {
                   <div className="pt-2 flex flex-wrap items-center gap-3">
                     <Button
                       onClick={() => handleLaunchSimulation()}
+                      disabled={isLaunching}
                       className="text-xs font-semibold shadow-xs bg-primary text-primary-foreground hover:bg-primary/90 px-5 py-2.5 h-auto"
                     >
-                      <Play className="w-3.5 h-3.5 mr-2 fill-current" />
-                      Start Courtroom Simulation
+                      {isLaunching ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
+                          Starting Simulation...
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-3.5 h-3.5 mr-2 fill-current" />
+                          Start Courtroom Simulation
+                        </>
+                      )}
                     </Button>
                     <Button
                       variant="outline"
@@ -301,9 +357,14 @@ export default function DashboardPage() {
                           <Button
                             size="sm"
                             onClick={() => handleLaunchSimulation(sim.id)}
+                            disabled={isLaunching}
                             className="text-xs h-8 px-3"
                           >
-                            <Play className="w-3 h-3 mr-1.5 fill-current" />
+                            {isLaunching ? (
+                              <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+                            ) : (
+                              <Play className="w-3 h-3 mr-1.5 fill-current" />
+                            )}
                             Enter Courtroom
                           </Button>
                         </div>

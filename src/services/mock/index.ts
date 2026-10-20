@@ -9,8 +9,10 @@ import {
 } from '@/data/mock-data';
 import type {
   AuthService, SimulationService, CourtroomService,
-  ResearchService, PerformanceService, NotificationService, CertificateService
+  ResearchService, PerformanceService, NotificationService, CertificateService,
+  GuestAuthResponse
 } from '../interfaces';
+import { httpAuthService } from '../http/auth';
 import type {
   StudentProfile, Simulation, SimulationSession, CaseFile,
   LegalDocument, LegalCitation, ResearchMessage, ResearchSession,
@@ -49,6 +51,10 @@ function setStorage<T>(key: string, value: T): void {
 
 // ── Auth Service ──
 export class MockAuthService implements AuthService {
+  async createGuestSession(caseSlug: string = 'contract_breach_demo'): Promise<GuestAuthResponse> {
+    return httpAuthService.createGuestSession(caseSlug);
+  }
+
   async getCurrentUser(): Promise<StudentProfile | null> {
     return getStorage<StudentProfile>(STORAGE_KEYS.USER, mockStudent);
   }

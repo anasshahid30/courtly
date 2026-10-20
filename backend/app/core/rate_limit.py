@@ -56,8 +56,43 @@ def reset_failed_logins(email: str) -> None:
     _failed_attempts.pop(normalized, None)
 
 
+_guest_creation_attempts: dict[str, list[datetime]] = defaultdict(list)
+MAX_GUEST_CREATION_ATTEMPTS = 5
+GUEST_LOCKOUT_WINDOW = timedelta(minutes=15)
+
+
+def check_guest_rate_limit(ip: str) -> None:
+    """
+    Checks if an IP has created 5 or more guest sessions within 15 minutes.
+    If so, raises HTTP 429.
+    """
+    now = datetime.now(UTC)
+    cutoff = now - GUEST_LOCKOUT_WINDOW
+    valid_attempts = [ts for ts in _guest_creation_attempts[ip] if ts > cutoff]
+    _guest_creation_attempts[ip] = valid_attempts
+
+    if len(valid_attempts) >= MAX_GUEST_CREATION_ATTEMPTS:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many guest session creation attempts. Please try again in 15 minutes.",
+        )
+
+
+def record_guest_creation(ip: str) -> None:
+    """
+    Records a guest session creation timestamp for an IP address.
+    """
+    now = datetime.now(UTC)
+    cutoff = now - GUEST_LOCKOUT_WINDOW
+    valid_attempts = [ts for ts in _guest_creation_attempts[ip] if ts > cutoff]
+    valid_attempts.append(now)
+    _guest_creation_attempts[ip] = valid_attempts
+
+
 def clear_all_rate_limits() -> None:
     """
     Clears all recorded rate limits. Useful for test cleanup.
     """
     _failed_attempts.clear()
+    _guest_creation_attempts.clear()
+

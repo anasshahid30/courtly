@@ -4,7 +4,7 @@
 
 import { apiFetch, setAuthToken } from './client';
 import { adaptUserToStudentProfile, type BackendUserResponse } from './adapters';
-import type { AuthService } from '../interfaces';
+import type { AuthService, GuestAuthResponse } from '../interfaces';
 import type { StudentProfile } from '@/types';
 
 interface LoginResponse {
@@ -13,6 +13,19 @@ interface LoginResponse {
 }
 
 export class HttpAuthService implements AuthService {
+  async createGuestSession(caseSlug: string = 'contract_breach_demo'): Promise<GuestAuthResponse> {
+    const res = await apiFetch<GuestAuthResponse>('/api/v1/auth/guest', {
+      method: 'POST',
+      body: JSON.stringify({ case_slug: caseSlug }),
+    });
+
+    if (res?.access_token) {
+      setAuthToken(res.access_token);
+    }
+
+    return res;
+  }
+
   async register(data: Partial<StudentProfile> & { password?: string }): Promise<StudentProfile> {
     const res = await apiFetch<BackendUserResponse>('/api/v1/auth/register', {
       method: 'POST',

@@ -9,12 +9,32 @@ import type {
   PerformanceReport, LegalDomain, Jurisdiction, Notification, CertificateRecord
 } from '@/types';
 
+export interface GuestAuthResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  guest_id: number;
+  guest_user: {
+    id: number;
+    email: string;
+    full_name: string;
+    role: string;
+  };
+  session_id: number;
+  case_slug: string;
+  level_number: number;
+  level: number;
+  status: string;
+  current_stage: number;
+}
+
 export interface AuthService {
   getCurrentUser(): Promise<StudentProfile | null>;
   login(credentials: { email: string; password?: string }): Promise<StudentProfile>;
   register(data: Partial<StudentProfile> & { password?: string }): Promise<StudentProfile>;
   logout(): Promise<void>;
   updateProfile(data: Partial<StudentProfile>): Promise<StudentProfile>;
+  createGuestSession?(caseSlug?: string): Promise<GuestAuthResponse>;
 }
 
 export interface SimulationService {
