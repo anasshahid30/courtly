@@ -1,5 +1,5 @@
-from datetime import UTC, datetime, timedelta
 import secrets
+from datetime import UTC, datetime, timedelta
 
 import jwt
 from argon2 import PasswordHasher
@@ -19,7 +19,8 @@ from app.core.roles import ROLE_GUEST
 from app.core.security import ALGORITHM, SECRET_KEY
 from app.db import get_db
 from app.deps import get_current_user
-from app.models import Case, Session as SessionModel, User
+from app.models import Case, User
+from app.models import Session as SessionModel
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 ph = PasswordHasher()

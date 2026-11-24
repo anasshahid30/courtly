@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 from app.core.roles import ROLE_GUEST
 from app.core.security import ALGORITHM, SECRET_KEY
 from app.db import get_db
-from app.models import Session as SessionModel, User
+from app.models import Session as SessionModel
+from app.models import User
 
 bearer_scheme = HTTPBearer()
 
