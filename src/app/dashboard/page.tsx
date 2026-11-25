@@ -39,6 +39,7 @@ import { Input } from '@/components/ui/input';
 import { mockSimulations, mockPerformanceReports } from '@/data/mock-data';
 import { toast } from 'sonner';
 import { performanceService, type BackendUserProgress } from '@/services';
+import { httpAuthService, getAuthToken } from '@/services/http';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -53,7 +54,13 @@ export default function DashboardPage() {
     openAuthModal,
     startCourtroomSession,
     setActiveSimulation,
+    setActiveCaseFile,
+    setActiveSession,
+    setGuestSession,
+    resetCourtroomSession,
   } = useAppStore();
+
+  const [isLaunchingGuest, setIsLaunchingGuest] = useState(false);
 
   const [selectedPracticeLevel, setSelectedPracticeLevel] = useState<number>(
     isGuestMode ? 1 : currentLevel
@@ -109,7 +116,29 @@ export default function DashboardPage() {
     return sim.difficulty === 'advanced';
   }).slice(0, 3);
 
-  const handleLaunchSimulation = (simId?: string) => {
+  const handleLaunchSimulation = async (simId?: string) => {
+    if (isGuestMode) {
+      if (isLaunchingGuest) return;
+      setIsLaunchingGuest(true);
+      try {
+        if (!getAuthToken() || !guestSession?.id) {
+          const { session } = await httpAuthService.loginAsGuest();
+          setActiveSession(session);
+          setGuestSession(session);
+        } else {
+          setActiveSession(guestSession);
+        }
+        setActiveCaseFile(null);
+        resetCourtroomSession();
+        router.push('/courtroom');
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Unable to start guest courtroom session.';
+        toast.error(msg);
+      } finally {
+        setIsLaunchingGuest(false);
+      }
+      return;
+    }
     const targetSim = mockSimulations.find((s) => s.id === simId) || mockSimulations[0];
     setActiveSimulation(targetSim);
     startCourtroomSession(targetSim.id);

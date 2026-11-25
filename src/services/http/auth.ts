@@ -5,11 +5,21 @@
 import { apiFetch, setAuthToken } from './client';
 import { adaptUserToStudentProfile, type BackendUserResponse } from './adapters';
 import type { AuthService } from '../interfaces';
-import type { StudentProfile } from '@/types';
+import type { SimulationSession, StudentProfile } from '@/types';
 
 interface LoginResponse {
   access_token: string;
   token_type: string;
+}
+
+export interface GuestAuthResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  session_id: number;
+  case_slug: string;
+  level_number: number;
+  user: BackendUserResponse;
 }
 
 export class HttpAuthService implements AuthService {
@@ -55,6 +65,34 @@ export class HttpAuthService implements AuthService {
 
   async logout(): Promise<void> {
     setAuthToken(null);
+  }
+
+  async loginAsGuest(): Promise<{
+    user: StudentProfile;
+    session: SimulationSession;
+    accessToken: string;
+  }> {
+    const res = await apiFetch<GuestAuthResponse>('/api/v1/auth/guest', {
+      method: 'POST',
+    });
+
+    setAuthToken(res.access_token);
+
+    const user = adaptUserToStudentProfile(res.user);
+    const session: SimulationSession = {
+      id: String(res.session_id),
+      simulationId: res.case_slug,
+      userId: String(res.user.id),
+      isGuestSession: true,
+      userRole: 'plaintiff_counsel',
+      difficulty: 'beginner',
+      status: 'active',
+      currentStageIndex: 0,
+      transcript: [],
+      startedAt: new Date().toISOString(),
+    };
+
+    return { user, session, accessToken: res.access_token };
   }
 
   async updateProfile(data: Partial<StudentProfile>): Promise<StudentProfile> {

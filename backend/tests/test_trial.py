@@ -236,3 +236,331 @@ def test_new_objection_has_ruling_pending():
     assert "out of court" in objection["grounds"]
     assert objection["ruling"] == "pending", "Initial ruling must strictly be 'pending'"
     assert objection["reasoning"] is None, "No reasoning should be auto-generated without AI judge"
+
+
+def test_whitespace_only_turn_returns_422():
+    """Whitespace-only turn submissions must be rejected with 422."""
+    token, _ = register_and_login("whitespace_turn")
+    session_id = create_session(token)
+
+    res = client.post(
+        f"/api/v1/sessions/{session_id}/turns",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"text": "   \n\t  "},
+    )
+    assert res.status_code == 422
+
+
+def test_invalid_token_on_turn_returns_401():
+    """Invalid or expired JWT must be rejected with 401 on turn submission."""
+    token, _ = register_and_login("bad_token_turn")
+    session_id = create_session(token)
+
+    res = client.post(
+        f"/api/v1/sessions/{session_id}/turns",
+        headers={"Authorization": "Bearer invalid.jwt.token"},
+        json={"text": "May it please the Court."},
+    )
+    assert res.status_code == 401
+
+
+def test_guest_auth_creates_session_and_bound_jwt():
+    """POST /api/v1/auth/guest creates a guest user, Foundation session, and 2h bound JWT."""
+    import jwt
+    from app.core.security import ALGORITHM, SECRET_KEY
+    from app.seed import seed
+
+    seed()
+    res = client.post("/api/v1/auth/guest")
+    assert res.status_code == 201
+    data = res.json()
+
+    assert data["token_type"] == "bearer"
+    assert data["expires_in"] == 7200
+    assert data["case_slug"] == "contract_breach_demo"
+    assert data["level_number"] == 1
+    assert data["user"]["role"] == "guest"
+
+    claims = jwt.decode(data["access_token"], SECRET_KEY, algorithms=[ALGORITHM])
+    assert claims["role"] == "guest"
+    assert claims["is_guest"] is True
+    assert claims["session_id"] == data["session_id"]
+
+
+def test_guest_can_submit_turn_and_retrieve_transcript():
+    """A guest with a valid guest JWT can submit turns and retrieve the persisted transcript."""
+    from app.seed import seed
+
+    seed()
+    guest_res = client.post("/api/v1/auth/guest")
+    assert guest_res.status_code == 201
+    token = guest_res.json()["access_token"]
+    session_id = guest_res.json()["session_id"]
+
+    turn_res = client.post(
+        f"/api/v1/sessions/{session_id}/turns",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"text": "Claimant relies on the Master Freight Agreement executed on March 1, 2025."},
+    )
+    assert turn_res.status_code == 201
+    turn_data = turn_res.json()
+    assert turn_data["session_id"] == session_id
+    assert turn_data["speaker_type"] == "learner"
+    assert "Master Freight Agreement" in turn_data["text"]
+
+    transcript_res = client.get(
+        f"/api/v1/sessions/{session_id}/turns",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert transcript_res.status_code == 200
+    turns = transcript_res.json()
+    assert len(turns) == 1
+    assert turns[0]["id"] == turn_data["id"]
+
+
+def test_guest_jwt_session_binding_rejects_other_session():
+    """A guest JWT bound to one session cannot access or submit turns to another session."""
+    from app.seed import seed
+
+    seed()
+    guest_a = client.post("/api/v1/auth/guest").json()
+    token_a = guest_a["access_token"]
+
+    # Create a second session for the same guest user via POST /api/v1/sessions
+    other_sess = client.post(
+        "/api/v1/sessions",
+        headers={"Authorization": f"Bearer {token_a}"},
+        json={"case_slug": "contract_breach_demo"},
+    )
+    assert other_sess.status_code == 201
+    other_session_id = other_sess.json()["id"]
+
+    # Attempting to post a turn to the unbound session with token_a must return 403
+    res = client.post(
+        f"/api/v1/sessions/{other_session_id}/turns",
+        headers={"Authorization": f"Bearer {token_a}"},
+        json={"text": "Attempting cross-session turn."},
+    )
+    assert res.status_code == 403
+
+
+def test_guest_cannot_start_higher_level_session():
+    """Guest users are restricted to Level 1 (Foundation) simulations."""
+    from app.db import SessionLocal
+    from app.models import Case
+    from app.seed import seed
+
+    seed()
+    db = SessionLocal()
+    try:
+        if not db.query(Case).filter(Case.slug == "level_2_demo").first():
+            db.add(
+                Case(
+                    slug="level_2_demo",
+                    title="Level 2 Test Case",
+                    jurisdiction="Demo",
+                    domain_slug="contract",
+                    level_number=2,
+                    case_json="{}",
+                )
+            )
+            db.commit()
+    finally:
+        db.close()
+
+    guest = client.post("/api/v1/auth/guest").json()
+    res = client.post(
+        "/api/v1/sessions",
+        headers={"Authorization": f"Bearer {guest['access_token']}"},
+        json={"case_slug": "level_2_demo"},
+    )
+    assert res.status_code == 403
+
+
+def test_evidence_presentation_and_retrieval():
+    """Valid case evidence can be presented, retrieved, and duplicates are rejected with 409."""
+    from app.seed import seed
+
+    seed()
+    guest = client.post("/api/v1/auth/guest").json()
+    token = guest["access_token"]
+    session_id = guest["session_id"]
+
+    # Present valid document from contract_breach_demo
+    res = client.post(
+        f"/api/v1/sessions/{session_id}/evidence",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"evidence_id": "doc-1"},
+    )
+    assert res.status_code == 201
+    data = res.json()
+    assert data["session_id"] == session_id
+    assert data["evidence_id"] == "doc-1"
+    assert data["title"] == "Master Freight Agreement"
+
+    # Duplicate presentation must return 409
+    dup = client.post(
+        f"/api/v1/sessions/{session_id}/evidence",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"evidence_id": "doc-1"},
+    )
+    assert dup.status_code == 409
+
+    # Retrieve presented evidence
+    list_res = client.get(
+        f"/api/v1/sessions/{session_id}/evidence",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert list_res.status_code == 200
+    items = list_res.json()
+    assert len(items) == 1
+    assert items[0]["evidence_id"] == "doc-1"
+
+
+def test_evidence_from_another_case_rejected():
+    """Presenting an evidence_id not in the active case dossier returns 422."""
+    from app.seed import seed
+
+    seed()
+    guest = client.post("/api/v1/auth/guest").json()
+    res = client.post(
+        f"/api/v1/sessions/{guest['session_id']}/evidence",
+        headers={"Authorization": f"Bearer {guest['access_token']}"},
+        json={"evidence_id": "nonexistent-doc-999"},
+    )
+    assert res.status_code == 422
+
+
+def test_evidence_unauthorized_and_guest_binding():
+    """Unauthorized users get 404/401 and bound guest tokens get 403 on other sessions."""
+    from app.seed import seed
+
+    seed()
+    guest_a = client.post("/api/v1/auth/guest").json()
+    token_a = guest_a["access_token"]
+    session_a = guest_a["session_id"]
+
+    # Unauthenticated user
+    no_auth = client.post(
+        f"/api/v1/sessions/{session_a}/evidence",
+        json={"evidence_id": "doc-1"},
+    )
+    assert no_auth.status_code in (401, 403)
+
+    # Another user gets 404
+    other_token, _ = register_and_login("other_ev_user")
+    other_res = client.post(
+        f"/api/v1/sessions/{session_a}/evidence",
+        headers={"Authorization": f"Bearer {other_token}"},
+        json={"evidence_id": "doc-1"},
+    )
+    assert other_res.status_code == 404
+
+    # Guest token bound to session_a cannot present on another session owned by same guest
+    other_sess = client.post(
+        "/api/v1/sessions",
+        headers={"Authorization": f"Bearer {token_a}"},
+        json={"case_slug": "contract_breach_demo"},
+    ).json()
+    cross_res = client.post(
+        f"/api/v1/sessions/{other_sess['id']}/evidence",
+        headers={"Authorization": f"Bearer {token_a}"},
+        json={"evidence_id": "doc-1"},
+    )
+    assert cross_res.status_code == 403
+
+
+def test_objection_validation_retrieval_and_completed_session():
+    """Objections validate grounds/type, can be retrieved, and fail with 409 on completed sessions."""
+    from app.seed import seed
+
+    seed()
+    token, _ = register_and_login("obj_full")
+    session_id = create_session(token)
+
+    turn_res = client.post(
+        f"/api/v1/sessions/{session_id}/turns",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"text": "Witness testified about what a third party told him."},
+    )
+    turn_id = turn_res.json()["id"]
+
+    # Whitespace-only grounds -> 422
+    bad_grounds = client.post(
+        f"/api/v1/sessions/{session_id}/objections",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"turn_id": turn_id, "objection_type": "hearsay", "grounds": "   "},
+    )
+    assert bad_grounds.status_code == 422
+
+    # Invalid objection_type -> 422
+    bad_type = client.post(
+        f"/api/v1/sessions/{session_id}/objections",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"turn_id": turn_id, "objection_type": "made_up_type", "grounds": "Improper."},
+    )
+    assert bad_type.status_code == 422
+
+    # Valid objection -> 201 with ruling='pending'
+    ok_res = client.post(
+        f"/api/v1/sessions/{session_id}/objections",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"turn_id": turn_id, "objection_type": "hearsay", "grounds": "Out-of-court statement."},
+    )
+    assert ok_res.status_code == 201
+    assert ok_res.json()["ruling"] == "pending"
+
+    # Retrieval via GET /objections
+    list_res = client.get(
+        f"/api/v1/sessions/{session_id}/objections",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert list_res.status_code == 200
+    assert len(list_res.json()) == 1
+    assert list_res.json()[0]["objection_type"] == "hearsay"
+
+    # Complete the session, then verify objection returns 409
+    passing_criteria = [
+        {"criterion_code": c, "score": 90.0, "explanation": "Solid"} for c in REQUIRED_CRITERIA
+    ]
+    comp = client.post(
+        f"/api/v1/sessions/{session_id}/complete",
+        headers={"Authorization": f"Bearer {token}"},
+        json=passing_criteria,
+    )
+    assert comp.status_code == 200
+
+    closed_res = client.post(
+        f"/api/v1/sessions/{session_id}/objections",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"turn_id": turn_id, "objection_type": "relevance", "grounds": "Late objection."},
+    )
+    assert closed_res.status_code == 409
+
+
+def test_guest_objection_session_binding():
+    """A guest JWT bound to session A cannot raise or list objections on session B."""
+    from app.seed import seed
+
+    seed()
+    guest_a = client.post("/api/v1/auth/guest").json()
+    token_a = guest_a["access_token"]
+
+    sess_b = client.post(
+        "/api/v1/sessions",
+        headers={"Authorization": f"Bearer {token_a}"},
+        json={"case_slug": "contract_breach_demo"},
+    ).json()
+
+    res = client.post(
+        f"/api/v1/sessions/{sess_b['id']}/objections",
+        headers={"Authorization": f"Bearer {token_a}"},
+        json={"turn_id": 1, "objection_type": "hearsay", "grounds": "Cross-session test."},
+    )
+    assert res.status_code == 403
+
+    get_res = client.get(
+        f"/api/v1/sessions/{sess_b['id']}/objections",
+        headers={"Authorization": f"Bearer {token_a}"},
+    )
+    assert get_res.status_code == 403

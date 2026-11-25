@@ -20,27 +20,39 @@ export function CaseFileModal() {
 
   if (!activeCaseFile) return null;
 
+  const claimantParty = activeCaseFile.parties.find((p) => {
+    const r = p.role.toLowerCase();
+    return r === 'plaintiff' || r === 'claimant';
+  });
+  const defendantParty = activeCaseFile.parties.find((p) => p.role.toLowerCase() === 'defendant');
+
   return (
     <Dialog open={isCaseFileModalOpen} onOpenChange={(open) => !open && closeCaseFileModal()}>
       <DialogContent className="sm:max-w-[760px] max-h-[85vh] flex flex-col p-6 border-border">
         <DialogHeader className="space-y-1 pb-3 border-b border-border">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="font-mono text-xs">
-                {activeCaseFile.caseNumber}
-              </Badge>
-              <Badge variant="secondary" className="text-xs">
-                {activeCaseFile.court}
-              </Badge>
+              {activeCaseFile.caseNumber && (
+                <Badge variant="outline" className="font-mono text-xs">
+                  {activeCaseFile.caseNumber}
+                </Badge>
+              )}
+              {(activeCaseFile.court || activeCaseFile.proceedingType) && (
+                <Badge variant="secondary" className="text-xs">
+                  {activeCaseFile.court || activeCaseFile.proceedingType}
+                </Badge>
+              )}
             </div>
             <span className="text-xs text-muted-foreground">{activeCaseFile.jurisdiction}</span>
           </div>
           <DialogTitle className="text-xl font-serif font-bold pt-1 text-foreground">
             {activeCaseFile.title}
           </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
-            {activeCaseFile.proceduralHistory}
-          </DialogDescription>
+          {activeCaseFile.proceduralHistory && (
+            <DialogDescription className="text-xs text-muted-foreground">
+              {activeCaseFile.proceduralHistory}
+            </DialogDescription>
+          )}
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
@@ -70,14 +82,16 @@ export function CaseFileModal() {
                     <Badge variant="outline" className="text-[10px]">Claimant</Badge>
                   </div>
                   <div className="text-sm font-medium text-foreground">
-                    {activeCaseFile.parties.find(p => p.role === 'plaintiff')?.name}
+                    {claimantParty?.name || 'Not specified'}
                   </div>
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    {activeCaseFile.parties.find(p => p.role === 'plaintiff')?.description}
+                    {claimantParty?.description}
                   </p>
-                  <div className="text-[11px] text-primary pt-1 font-medium">
-                    Represented by: {activeCaseFile.parties.find(p => p.role === 'plaintiff')?.counsel}
-                  </div>
+                  {claimantParty?.counsel && (
+                    <div className="text-[11px] text-primary pt-1 font-medium">
+                      Represented by: {claimantParty.counsel}
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-3 rounded-lg border border-border bg-card space-y-2">
@@ -86,14 +100,16 @@ export function CaseFileModal() {
                     <Badge variant="outline" className="text-[10px]">Defendant</Badge>
                   </div>
                   <div className="text-sm font-medium text-foreground">
-                    {activeCaseFile.parties.find(p => p.role === 'defendant')?.name}
+                    {defendantParty?.name || 'Not specified'}
                   </div>
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    {activeCaseFile.parties.find(p => p.role === 'defendant')?.description}
+                    {defendantParty?.description}
                   </p>
-                  <div className="text-[11px] text-primary pt-1 font-medium">
-                    Represented by: {activeCaseFile.parties.find(p => p.role === 'defendant')?.counsel}
-                  </div>
+                  {defendantParty?.counsel && (
+                    <div className="text-[11px] text-primary pt-1 font-medium">
+                      Represented by: {defendantParty.counsel}
+                    </div>
+                  )}
                 </div>
               </div>
             </TabsContent>
@@ -133,14 +149,17 @@ export function CaseFileModal() {
                         <span className="font-semibold text-foreground">{witness.name}</span>
                       </div>
                       <Badge variant="outline" className="text-[10px] capitalize">
-                        Called by {witness.party} ({witness.role})
+                        {witness.party ? `Called by ${witness.party} (${witness.role})` : witness.role}
                       </Badge>
                     </div>
                     <div className="text-[11px] text-muted-foreground">
-                      <strong>Credibility Assessment:</strong> {witness.credibilityRating} • {witness.background}
+                      {witness.credibilityRating && (
+                        <><strong>Credibility Assessment:</strong> {witness.credibilityRating} • </>
+                      )}
+                      {witness.background}
                     </div>
                     <div className="p-2.5 rounded bg-muted/30 border border-border/50 text-[11px] text-muted-foreground italic">
-                      "{witness.statementSummary}"
+                      &ldquo;{witness.statementSummary}&rdquo;
                     </div>
                   </div>
                 ))}
@@ -150,20 +169,36 @@ export function CaseFileModal() {
             {/* Tab: Statutes & Law */}
             <TabsContent value="provisions" className="space-y-3 m-0">
               <div className="space-y-2.5">
-                {(activeCaseFile.provisions || activeCaseFile.applicableLaw || []).map((prov) => (
-                  <div key={prov.id} className="p-3 rounded-lg border border-border bg-card space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-primary">{prov.statuteName || prov.title} — {prov.sectionNumber || prov.section || 'General'}</span>
-                      <Badge variant="secondary" className="text-[10px]">{prov.category || 'Statute'}</Badge>
+                {(activeCaseFile.provisions || activeCaseFile.applicableLaw || []).length > 0 ? (
+                  (activeCaseFile.provisions || activeCaseFile.applicableLaw || []).map((prov) => (
+                    <div key={prov.id} className="p-3 rounded-lg border border-border bg-card space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-primary">{prov.statuteName || prov.title} — {prov.sectionNumber || prov.section || 'General'}</span>
+                        <Badge variant="secondary" className="text-[10px]">{prov.category || 'Statute'}</Badge>
+                      </div>
+                      <div className="font-mono text-[11px] p-2 rounded bg-muted/30 border border-border/40 text-foreground">
+                        {prov.verbatimText || prov.text}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        <strong>Application:</strong> {prov.relevance || 'Applicable commercial precedent.'}
+                      </p>
                     </div>
-                    <div className="font-mono text-[11px] p-2 rounded bg-muted/30 border border-border/40 text-foreground">
-                      {prov.verbatimText || prov.text}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground leading-relaxed">
-                      <strong>Application:</strong> {prov.relevance || 'Applicable commercial precedent.'}
-                    </p>
+                  ))
+                ) : activeCaseFile.legalIssues && activeCaseFile.legalIssues.length > 0 ? (
+                  <div className="space-y-2">
+                    <span className="font-semibold text-foreground uppercase tracking-wider text-[10px]">
+                      Legal Issues in Dispute
+                    </span>
+                    {activeCaseFile.legalIssues.map((issue, idx) => (
+                      <div key={idx} className="p-3 rounded-lg border border-border bg-card text-xs text-muted-foreground">
+                        <span className="font-semibold text-primary mr-1.5">{idx + 1}.</span>
+                        {issue}
+                      </div>
+                    ))}
                   </div>
-                ))}
+                ) : (
+                  <p className="text-muted-foreground italic text-xs">No statutory provisions or legal issues listed in this dossier.</p>
+                )}
               </div>
             </TabsContent>
           </div>

@@ -21,6 +21,8 @@ def get_current_user(
     user = db.get(User, int(payload["sub"]))
     if user is None:
         raise HTTPException(status_code=401, detail="User not found")
+    # Attach decoded JWT claims for downstream session-binding checks
+    setattr(user, "_jwt_claims", payload)
     return user
 
 

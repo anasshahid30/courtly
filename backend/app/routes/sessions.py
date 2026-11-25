@@ -94,6 +94,14 @@ def create_session(
             detail="Simulation case level must be between 1 and 5",
         )
 
+    # Guest users are restricted to Foundation (level 1) simulations only
+    claims = getattr(current_user, "_jwt_claims", {})
+    if (current_user.role == "guest" or claims.get("is_guest")) and case.level_number != 1:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Guest access is restricted to Level 1 (Foundation) simulations.",
+        )
+
     # Initialize user's progress if missing
     initialize_user_progress(db, current_user.id)
 
