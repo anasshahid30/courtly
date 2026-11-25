@@ -36,6 +36,7 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="Invalid token role claim")
 
     user.token_payload = payload
+    user._jwt_claims = payload  # type: ignore[attr-defined]
     return user
 
 

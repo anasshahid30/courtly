@@ -13,19 +13,25 @@ export interface GuestAuthResponse {
   access_token: string;
   token_type: string;
   expires_in: number;
-  guest_id: number;
-  guest_user: {
+  session_id: number;
+  case_slug: string;
+  level_number: number;
+  guest_id?: number;
+  guest_user?: {
     id: number;
     email: string;
     full_name: string;
     role: string;
   };
-  session_id: number;
-  case_slug: string;
-  level_number: number;
-  level: number;
-  status: string;
-  current_stage: number;
+  level?: number;
+  status?: string;
+  current_stage?: number;
+  user?: {
+    id: number;
+    email: string;
+    full_name: string;
+    role: string;
+  };
 }
 
 export interface AuthService {

@@ -83,12 +83,15 @@ interface AppState {
   activeSpeakerId: string; // 'part-judge', 'part-opp-counsel', 'part-student', 'part-witness'
   liveTranscript: TranscriptEntry[];
   admittedEvidenceIds: string[];
+  recordedObjections: JudicialRuling[];
   sessionTimerSeconds: number;
   recentRuling: JudicialRuling | null;
   
   // Actions
   setActiveSimulation: (sim: Simulation | null) => void;
+  setActiveCaseFile: (caseFile: CaseFile | null) => void;
   setActiveSession: (session: SimulationSession | null) => void;
+  setLiveTranscript: (entries: TranscriptEntry[]) => void;
   setSelectedRole: (role: string) => void;
   setSelectedDifficulty: (difficulty: string) => void;
   setVoiceMode: (isVoice: boolean) => void;
@@ -103,6 +106,9 @@ interface AppState {
   setActiveSpeaker: (speakerId: string) => void;
   addTranscriptEntry: (entry: TranscriptEntry) => void;
   admitEvidence: (evidenceId: string) => void;
+  setAdmittedEvidenceIds: (ids: string[]) => void;
+  setRecordedObjections: (objections: JudicialRuling[]) => void;
+  addRecordedObjection: (objection: JudicialRuling) => void;
   setRecentRuling: (ruling: JudicialRuling | null) => void;
   tickTimer: () => void;
   resetCourtroomSession: () => void;
@@ -225,6 +231,7 @@ export const useAppStore = create<AppState>()(
       activeSpeakerId: 'part-judge',
       liveTranscript: [],
       admittedEvidenceIds: ['ev-1'],
+      recordedObjections: [],
       sessionTimerSeconds: 0,
       recentRuling: null,
 
@@ -232,7 +239,9 @@ export const useAppStore = create<AppState>()(
         const caseFile = sim ? mockCaseFiles.find((c) => c.simulationId === sim.id) || mockCaseFiles[0] : null;
         set({ activeSimulation: sim, activeCaseFile: caseFile });
       },
+      setActiveCaseFile: (caseFile) => set({ activeCaseFile: caseFile }),
       setActiveSession: (session) => set({ activeSession: session }),
+      setLiveTranscript: (entries) => set({ liveTranscript: entries }),
       setSelectedRole: (role) => set({ selectedRole: role }),
       setSelectedDifficulty: (difficulty) => set({ selectedDifficulty: difficulty }),
       setVoiceMode: (isVoice) => set({ isVoiceMode: isVoice }),
@@ -241,7 +250,10 @@ export const useAppStore = create<AppState>()(
 
       startCourtroomSession: (simId, sessionData) => {
         const sim = simId ? mockSimulations.find((s) => s.id === simId) || mockSimulations[0] : get().activeSimulation || mockSimulations[0];
-        const caseFile = mockCaseFiles.find((c) => c.simulationId === sim.id) || mockCaseFiles[0];
+        // For guest / real-data sessions the activeCaseFile is already set by the courtroom page
+        // before this is called. Only fall back to mock for non-guest demo flows.
+        const existingCaseFile = get().activeCaseFile;
+        const caseFile = existingCaseFile || mockCaseFiles.find((c) => c.simulationId === sim.id) || mockCaseFiles[0];
         set({
           activeSimulation: sim,
           activeCaseFile: caseFile,
@@ -251,18 +263,9 @@ export const useAppStore = create<AppState>()(
           courtroomStage: 0,
           sessionTimerSeconds: 0,
           activeSpeakerId: 'part-judge',
-          liveTranscript: [
-            {
-              id: 'init-1',
-              speakerId: 'part-judge',
-              speakerName: 'The Hon. Justice Robert Vance',
-              speakerRole: 'Presiding Judge',
-              text: 'The High Court of Justice, Commercial Court is now in session. In the matter of Henderson v Caldwell Trading Ltd (Claim No. CL-2025-000842). Are counsel for the parties ready to proceed?',
-              timestamp: '10:00:00',
-              isKeyMoment: true,
-            },
-          ],
-          admittedEvidenceIds: ['ev-1'],
+          liveTranscript: [],
+          admittedEvidenceIds: [],
+          recordedObjections: [],
           recentRuling: null,
         });
       },
@@ -273,12 +276,24 @@ export const useAppStore = create<AppState>()(
       setCourtroomStage: (stage) => set({ courtroomStage: stage }),
       setActiveSpeaker: (speakerId) => set({ activeSpeakerId: speakerId }),
       addTranscriptEntry: (entry) =>
-        set((state) => ({ liveTranscript: [...state.liveTranscript, entry] })),
+        set((state) => ({
+          liveTranscript: state.liveTranscript.some((existing) => existing.id === entry.id)
+            ? state.liveTranscript
+            : [...state.liveTranscript, entry],
+        })),
       admitEvidence: (evidenceId) =>
         set((state) => ({
           admittedEvidenceIds: state.admittedEvidenceIds.includes(evidenceId)
             ? state.admittedEvidenceIds
             : [...state.admittedEvidenceIds, evidenceId],
+        })),
+      setAdmittedEvidenceIds: (ids) => set({ admittedEvidenceIds: ids }),
+      setRecordedObjections: (objections) => set({ recordedObjections: objections }),
+      addRecordedObjection: (objection) =>
+        set((state) => ({
+          recordedObjections: state.recordedObjections.some((o) => o.id === objection.id)
+            ? state.recordedObjections
+            : [...state.recordedObjections, objection],
         })),
       setRecentRuling: (ruling) => set({ recentRuling: ruling }),
       tickTimer: () => set((state) => ({ sessionTimerSeconds: state.sessionTimerSeconds + 1 })),

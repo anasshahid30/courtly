@@ -1,4 +1,5 @@
 import secrets
+import uuid
 from datetime import UTC, datetime, timedelta
 
 import jwt
@@ -114,53 +115,53 @@ class GuestAuthOut(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int
-    guest_id: int
-    guest_user: GuestUserOut
     session_id: int
     case_slug: str
     level_number: int
     level: int
     status: str
     current_stage: int
+    user: GuestUserOut
+    guest_id: int
+    guest_user: GuestUserOut
 
 
 @router.post("/guest", response_model=GuestAuthOut, status_code=status.HTTP_201_CREATED)
-def create_guest_auth(
-    data: GuestAuthIn,
+def create_guest_session(
     request: Request,
+    data: GuestAuthIn | None = None,
     db: Session = Depends(get_db),
 ):
     """
-    Creates an ephemeral guest user and initializes a single Foundation-level courtroom session.
-    Strictly restricted to the existing 'contract_breach_demo' case.
-    Issues a short-lived 2-hour JWT bound to this guest user and session.
+    Creates an isolated guest user and Foundation-only (level 1) trial session
+    for `contract_breach_demo`, returning a 2-hour JWT bound to that session.
     """
     client_ip = request.client.host if request.client else "unknown"
     check_guest_rate_limit(client_ip)
 
-    # 1. Enforce Foundation demo only
-    if data.case_slug != FOUNDATION_CASE_SLUG:
+    requested_slug = data.case_slug if (data and data.case_slug) else FOUNDATION_CASE_SLUG
+
+    if requested_slug != FOUNDATION_CASE_SLUG:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Guest access is strictly restricted to the Foundation case '{FOUNDATION_CASE_SLUG}'.",
         )
 
-    # 2. Verify case exists in database
-    case = db.query(Case).filter(Case.slug == FOUNDATION_CASE_SLUG).first()
+    case = (
+        db.query(Case)
+        .filter(Case.slug == FOUNDATION_CASE_SLUG)
+        .first()
+    )
     if not case:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Foundation case '{FOUNDATION_CASE_SLUG}' not found in database.",
+            detail="Foundation simulation case 'contract_breach_demo' is not available.",
         )
 
-    # 3. Generate unique guest credentials with secure random identifier
-    guest_hex = secrets.token_hex(12)
-    guest_email = f"guest_{guest_hex}@guest.courtly.internal"
-    guest_password = secrets.token_urlsafe(32)
-
+    guest_email = f"guest_{uuid.uuid4().hex[:12]}@guest.courtly.internal"
     guest_user = User(
         email=guest_email,
-        password_hash=ph.hash(guest_password),
+        password_hash=ph.hash(secrets.token_urlsafe(32)),
         full_name="Guest Advocate",
         role=ROLE_GUEST,
     )
@@ -168,8 +169,7 @@ def create_guest_auth(
     db.commit()
     db.refresh(guest_user)
 
-    # 4. Create the demo session for this guest
-    session = SessionModel(
+    guest_session = SessionModel(
         user_id=guest_user.id,
         case_slug=case.slug,
         level_number=case.level_number,
@@ -177,41 +177,41 @@ def create_guest_auth(
         current_stage=0,
         created_at=datetime.now(UTC),
     )
-    db.add(session)
+    db.add(guest_session)
     db.commit()
-    db.refresh(session)
+    db.refresh(guest_session)
 
-    # Record rate limit attempt
     record_guest_creation(client_ip)
 
-    # 5. Issue 2-hour JWT (7200 seconds)
     expires_in_seconds = 7200
     payload = {
         "sub": str(guest_user.id),
         "role": ROLE_GUEST,
-        "session_id": session.id,
-        "case_slug": session.case_slug,
+        "is_guest": True,
+        "session_id": guest_session.id,
+        "case_slug": guest_session.case_slug,
         "exp": datetime.now(UTC) + timedelta(seconds=expires_in_seconds),
     }
     token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+    user_info = {
+        "id": guest_user.id,
+        "email": guest_user.email,
+        "full_name": guest_user.full_name,
+        "role": guest_user.role,
+    }
 
     return {
         "access_token": token,
         "token_type": "bearer",
         "expires_in": expires_in_seconds,
+        "session_id": guest_session.id,
+        "case_slug": guest_session.case_slug,
+        "level_number": guest_session.level_number,
+        "level": guest_session.level_number,
+        "status": guest_session.status,
+        "current_stage": guest_session.current_stage,
+        "user": user_info,
         "guest_id": guest_user.id,
-        "guest_user": {
-            "id": guest_user.id,
-            "email": guest_user.email,
-            "full_name": guest_user.full_name,
-            "role": guest_user.role,
-        },
-        "session_id": session.id,
-        "case_slug": session.case_slug,
-        "level_number": session.level_number,
-        "level": session.level_number,
-        "status": session.status,
-        "current_stage": session.current_stage,
+        "guest_user": user_info,
     }
-
-

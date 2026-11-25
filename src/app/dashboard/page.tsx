@@ -38,7 +38,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { mockSimulations, mockPerformanceReports } from '@/data/mock-data';
 import { toast } from 'sonner';
-import { performanceService, httpAuthService, authService, type BackendUserProgress } from '@/services';
+import { performanceService, type BackendUserProgress } from '@/services';
+import { httpAuthService, getAuthToken } from '@/services/http';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -53,11 +54,13 @@ export default function DashboardPage() {
     openAuthModal,
     startCourtroomSession,
     setActiveSimulation,
+    setActiveCaseFile,
     setActiveSession,
     setGuestSession,
-    selectedRole,
-    selectedDifficulty,
+    resetCourtroomSession,
   } = useAppStore();
+
+  const [isLaunchingGuest, setIsLaunchingGuest] = useState(false);
 
   const [selectedPracticeLevel, setSelectedPracticeLevel] = useState<number>(
     isGuestMode ? 1 : currentLevel
@@ -115,48 +118,30 @@ export default function DashboardPage() {
   }).slice(0, 3);
 
   const handleLaunchSimulation = async (simId?: string) => {
-    const targetSim = mockSimulations.find((s) => s.id === simId) || mockSimulations[0];
-
-    // Guest mode / unauthenticated user: initiate secure backend guest session
     if (isGuestMode || !isAuthenticated) {
-      setIsLaunching(true);
+      if (isLaunchingGuest) return;
+      setIsLaunchingGuest(true);
       try {
-        // Map the Foundation simulation to real backend case slug 'contract_breach_demo'
-        const backendCaseSlug = 'contract_breach_demo';
-        const guestData = await (httpAuthService.createGuestSession
-          ? httpAuthService.createGuestSession(backendCaseSlug)
-          : authService.createGuestSession!(backendCaseSlug));
-
-        const sessionObj = {
-          id: String(guestData.session_id),
-          simulationId: targetSim.id,
-          simulation: targetSim,
-          userId: String(guestData.guest_id),
-          isGuestSession: true,
-          userRole: selectedRole || 'plaintiff_counsel',
-          difficulty: selectedDifficulty || 'beginner',
-          status: 'active' as const,
-          currentStageIndex: guestData.current_stage || 0,
-          transcript: [],
-          startedAt: new Date().toISOString(),
-        };
-
-        setActiveSession(sessionObj);
-        setGuestSession(sessionObj);
-        setActiveSimulation(targetSim);
-        startCourtroomSession(targetSim.id, sessionObj);
-
+        if (!getAuthToken() || !guestSession?.id) {
+          const { session } = await httpAuthService.loginAsGuest();
+          setActiveSession(session);
+          setGuestSession(session);
+        } else {
+          setActiveSession(guestSession);
+        }
+        setActiveCaseFile(null);
+        resetCourtroomSession();
         router.push('/courtroom');
       } catch (err: unknown) {
-        const errorMsg = err instanceof Error ? err.message : 'Failed to create guest courtroom session';
-        toast.error(errorMsg);
+        const msg = err instanceof Error ? err.message : 'Unable to start guest courtroom session.';
+        toast.error(msg);
       } finally {
-        setIsLaunching(false);
+        setIsLaunchingGuest(false);
       }
       return;
     }
 
-    // Registered user flow: preserve existing behaviour
+    const targetSim = mockSimulations.find((s) => s.id === simId) || mockSimulations[0];
     setActiveSimulation(targetSim);
     startCourtroomSession(targetSim.id);
     router.push('/courtroom');

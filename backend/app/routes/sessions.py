@@ -72,11 +72,6 @@ def create_session(
     Creates a new proceeding session for the authenticated user and marks the level IN_PROGRESS.
     The level must be UNLOCKED or IN_PROGRESS, otherwise returns 403.
     """
-    if current_user.role == ROLE_GUEST:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Guests cannot create unrestricted sessions. Use guest session initiation.",
-        )
     # Find the case
     case = (
         db.query(Case)
@@ -98,6 +93,14 @@ def create_session(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Simulation case level must be between 1 and 5",
+        )
+
+    # Guest users are restricted to Foundation (level 1) simulations only
+    claims = getattr(current_user, "_jwt_claims", {})
+    if (current_user.role == "guest" or claims.get("is_guest")) and case.level_number != 1:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Guest access is restricted to Level 1 (Foundation) simulations.",
         )
 
     # Initialize user's progress if missing

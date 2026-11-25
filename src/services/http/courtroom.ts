@@ -26,6 +26,14 @@ interface BackendStageAdvanceResponse {
   stage: number;
 }
 
+interface BackendPresentedEvidenceResponse {
+  id: number;
+  session_id: number;
+  evidence_id: string;
+  title: string;
+  presented_at: string;
+}
+
 export class HttpCourtroomService implements CourtroomService {
   async createSession(
     simulationId: string,
@@ -69,14 +77,16 @@ export class HttpCourtroomService implements CourtroomService {
     grounds: string,
     turnId?: number
   ): Promise<JudicialRuling> {
-    const effectiveTurnId = turnId || 1;
+    if (!turnId) {
+      throw new Error('A persisted courtroom turn ID is required to raise an objection.');
+    }
 
     const data = await apiFetch<BackendObjectionResponse>(
       `/api/v1/sessions/${sessionId}/objections`,
       {
         method: 'POST',
         body: JSON.stringify({
-          turn_id: effectiveTurnId,
+          turn_id: turnId,
           objection_type: objectionType,
           grounds,
         }),
@@ -84,6 +94,13 @@ export class HttpCourtroomService implements CourtroomService {
     );
 
     return adaptObjectionToJudicialRuling(data);
+  }
+
+  async getObjections(sessionId: string): Promise<JudicialRuling[]> {
+    const list = await apiFetch<BackendObjectionResponse[]>(
+      `/api/v1/sessions/${sessionId}/objections`
+    );
+    return list.map(adaptObjectionToJudicialRuling);
   }
 
   async advanceStage(sessionId: string): Promise<BackendStageAdvanceResponse> {
@@ -102,7 +119,21 @@ export class HttpCourtroomService implements CourtroomService {
   }
 
   async tenderEvidence(sessionId: string, evidenceId: string): Promise<boolean> {
+    await apiFetch<BackendPresentedEvidenceResponse>(
+      `/api/v1/sessions/${sessionId}/evidence`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ evidence_id: evidenceId }),
+      }
+    );
     return true;
+  }
+
+  async getPresentedEvidence(sessionId: string): Promise<string[]> {
+    const list = await apiFetch<BackendPresentedEvidenceResponse[]>(
+      `/api/v1/sessions/${sessionId}/evidence`
+    );
+    return list.map((item) => item.evidence_id);
   }
 
   async recordTranscript(
