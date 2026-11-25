@@ -267,6 +267,7 @@ def test_invalid_token_on_turn_returns_401():
 def test_guest_auth_creates_session_and_bound_jwt():
     """POST /api/v1/auth/guest creates a guest user, Foundation session, and 2h bound JWT."""
     import jwt
+
     from app.core.security import ALGORITHM, SECRET_KEY
     from app.seed import seed
 
