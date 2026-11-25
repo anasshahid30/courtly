@@ -177,6 +177,15 @@ export function adaptSimulationDetail(data: BackendSimulationDetail): Simulation
   };
 }
 
+// Raw witness shape as returned by the backend (snake_case)
+export interface RawBackendWitness {
+  id: string;
+  name: string;
+  role: string;
+  background?: string;
+  statement_summary?: string;
+}
+
 export interface BackendCaseFileResponse {
   slug?: string;
   title?: string;
@@ -196,7 +205,7 @@ export interface BackendCaseFileResponse {
     description?: string;
     date?: string;
   }>;
-  witnesses?: WitnessProfile[];
+  witnesses?: RawBackendWitness[];
   legal_issues?: string[];
 }
 
@@ -207,11 +216,21 @@ export function adaptCaseFile(data: BackendCaseFileResponse, simulationId: strin
     isAgreed: true,
   }));
 
-  const evidence: EvidenceItem[] = (data.documents || []).map((doc) => ({
+  const evidence: EvidenceItem[] = (data.documents || []).map((doc, idx) => ({
     id: doc.id,
+    exhibitNumber: `EX-${String(idx + 1).padStart(2, '0')}`,
     title: doc.title,
     description: doc.description || '',
     date: doc.date,
+  }));
+
+  // Backend witness fields use snake_case; map them to the frontend WitnessProfile shape.
+  const witnesses: WitnessProfile[] = (data.witnesses || []).map((w: RawBackendWitness) => ({
+    id: w.id,
+    name: w.name,
+    role: w.role,
+    background: w.background || '',
+    statementSummary: w.statement_summary || (w as unknown as WitnessProfile).statementSummary || '',
   }));
 
   return {
@@ -225,7 +244,7 @@ export function adaptCaseFile(data: BackendCaseFileResponse, simulationId: strin
     parties: data.parties || [],
     facts,
     evidence,
-    witnesses: data.witnesses || [],
+    witnesses,
     legalIssues: data.legal_issues || [],
   };
 }
@@ -315,12 +334,42 @@ export interface BackendTurnResponse {
 }
 
 export function adaptTurnToTranscriptEntry(turn: BackendTurnResponse): TranscriptEntry {
+  const speakerMap: Record<string, { speakerId: string; speakerName: string; speakerRole: string }> = {
+    learner: {
+      speakerId: 'part-student',
+      speakerName: 'You (Advocate)',
+      speakerRole: 'Advocate',
+    },
+    judge: {
+      speakerId: 'part-judge',
+      speakerName: 'Presiding Judge',
+      speakerRole: 'Presiding Judge',
+    },
+    opposing_counsel: {
+      speakerId: 'part-opp-counsel',
+      speakerName: 'Opposing Counsel',
+      speakerRole: 'Opposing Counsel',
+    },
+    witness: {
+      speakerId: 'part-witness',
+      speakerName: 'Witness',
+      speakerRole: 'Witness',
+    },
+  };
+
+  const mapped = speakerMap[turn.speaker_type] || {
+    speakerId: 'part-student',
+    speakerName: 'Courtroom Speaker',
+    speakerRole: turn.speaker_type,
+  };
+
   return {
     id: String(turn.id),
-    speakerName: turn.speaker_type === 'learner' ? 'Advocate' : 'Courtroom Speaker',
-    speakerRole: turn.speaker_type,
+    speakerId: mapped.speakerId,
+    speakerName: mapped.speakerName,
+    speakerRole: mapped.speakerRole,
     timestamp: turn.created_at
-      ? new Date(turn.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      ? new Date(turn.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
       : '',
     text: turn.text,
     stage: String(turn.stage_index),
